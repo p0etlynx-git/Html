@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оценочная модель теплового баланса бананов (2-я и 4-я степени зрелости)</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --accent-color: #0d6efd;
+            --border-color: #dee2e6;
+            --table-header-bg: #e9ecef;
+            --success-bg: #d1e7dd;
+            --success-border: #badbcc;
+            --success-text: #0f5132;
+            --caution-bg: #fff3cd;
+            --caution-border: #ffecb5;
+            --caution-text: #664d03;
+            --info-bg: #cff4fc;
+            --info-border: #b6effb;
+            --info-text: #055160;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1d21;
+                --text-color: #e9ecef;
+                --accent-color: #6ea8fe;
+                --border-color: #373b3e;
+                --table-header-bg: #2c3034;
+                --success-bg: #0f291e;
+                --success-border: #1a5c3e;
+                --success-text: #75b798;
+                --caution-bg: #3d3215;
+                --caution-border: #664d03;
+                --caution-text: #ffe69c;
+                --info-bg: #15303b;
+                --info-border: #055160;
+                --info-text: #9de5ff;
+            }
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1, h2, h3 {
+            color: var(--accent-color);
+            margin-top: 2rem;
+        }
+        h1 {
+            font-size: 1.8rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+        .formula-box {
+            background-color: var(--table-header-bg);
+            border-left: 4px solid var(--accent-color);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background-color: transparent;
+            font-size: 0.95rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+        th {
+            background-color: var(--table-header-bg);
+            font-weight: 600;
+        }
+        td:first-child, th:first-child {
+            text-align: left;
+            font-weight: 500;
+        }
+        .success-box {
+            background-color: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success-text);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+        }
+        .caution-box {
+            background-color: var(--caution-bg);
+            border: 1px solid var(--caution-border);
+            color: var(--caution-text);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            font-weight: 500;
+        }
+        .info-box {
+            background-color: var(--info-bg);
+            border: 1px solid var(--info-border);
+            color: var(--info-text);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        ul, ol {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Оценочная модель теплового баланса бананов (2-я и 4-я степени зрелости) при складском хранении</h1>
+
+    <div class="info-box">
+        <strong>ℹ️ О характере документа:</strong>
+        Данный документ представляет собой аналитическую модель, демонстрирующую <strong>общие физические тенденции</strong> теплообмена. Приведённые значения тепловыделения для 4-й степени зрелости получены расчётным путём (применение оценочного коэффициента ×2 к базовым данным ASHRAE) для иллюстрации влияния фазы созревания на тепловой баланс. Документ не заменяет натурных испытаний, но позволяет оценить риски и обосновать необходимость тех или иных логистических решений.
+    </div>
+
+    <h2>1. Исходные данные и параметры модели</h2>
+    <ul>
+        <li><strong>Продукт:</strong> Бананы, 2-я степень зрелости (зелёные, фаза покоя) и 4-я степень зрелости (начало пожелтения, активация дыхания).</li>
+        <li><strong>Фасовка и конфигурация:</strong> 18 кг/коробка. Паллет = 32 коробки (576 кг), однослойная укладка.</li>
+        <li><strong>Температура воздуха на складе ($T_{склада}$):</strong> 9 °C.</li>
+        <li><strong>Расчётный перепад температур ($\Delta T$):</strong> $(T_{пульпы} - 1) - 9 = T_{пульпы} - 10$ °C.</li>
+        <li><strong>Сценарии теплообмена ($U \cdot S$, Вт/°C):</strong> 
+            1) Одиночная коробка (1.2); 
+            2) Паллет без сквозняка (11.0); 
+            3) Паллет со сквозняком, без плёнки (38.5); 
+            4) Паллет со сквозняком, обмотка «крест» (25.0).
+        </li>
+    </ul>
+
+    <h2>2. Сравнение тепловыделения ($Q_{ген\_total}$)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Температура пульпы, °C</th>
+                <th>$\Delta T$, °C</th>
+                <th>2-я степень зрелости (Базовая), Вт</th>
+                <th>4-я степень зрелости (Оценочно, коэфф. ×2), Вт</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>12</td><td>2</td><td>107</td><td><strong>214</strong></td></tr>
+            <tr><td>13</td><td>3</td><td>122</td><td><strong>244</strong></td></tr>
+            <tr><td>14</td><td>4</td><td>132</td><td><strong>264</strong></td></tr>
+            <tr><td>15</td><td>5</td><td>143</td><td><strong>286</strong></td></tr>
+            <tr><td>16</td><td>6</td><td>163</td><td><strong>326</strong></td></tr>
+            <tr><td>17</td><td>7</td><td>194</td><td><strong>388</strong></td></tr>
+        </tbody>
+    </table>
+
+    <h2>3. Результаты расчёта теплового баланса (Баланс = $Q_{ген}$ − $Q_{потерь}$)</h2>
+    <p><em>Положительное значение (+) указывает на тенденцию к нагреву массы, отрицательное (−) – к остыванию. Равновесие достигается при значении, близком к 0.</em></p>
+
+    <h3>Таблица А: Тепловой баланс для 2-й степени зрелости</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Сценарий хранения</th>
+                <th>12 °C</th>
+                <th>13 °C</th>
+                <th>14 °C</th>
+                <th>15 °C</th>
+                <th>16 °C</th>
+                <th>17 °C</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Одиночная коробка</td>
+                <td>+0.9</td><td>+0.2</td><td>-0.7</td><td>-1.5</td><td>-2.1</td><td>-2.4</td>
+            </tr>
+            <tr>
+                <td>Паллет (без сквозняка)</td>
+                <td>+85</td><td>+89</td><td>+88</td><td>+88</td><td>+97</td><td>+117</td>
+            </tr>
+            <tr style="background-color: var(--success-bg); font-weight: bold;">
+                <td>Паллет (со сквозняком, без плёнки)</td>
+                <td>+30</td><td>+7</td><td>-22</td><td>-50</td><td>-68</td><td>-76</td>
+            </tr>
+            <tr>
+                <td>Паллет (обмотка «крест», 50%)</td>
+                <td>+57</td><td>+47</td><td>+32</td><td>+18</td><td>+13</td><td>+19</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Таблица Б: Тепловой баланс для 4-й степени зрелости (Оценочная модель)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Сценарий хранения</th>
+                <th>12 °C</th>
+                <th>13 °C</th>
+                <th>14 °C</th>
+                <th>15 °C</th>
+                <th>16 °C</th>
+                <th>17 °C</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Одиночная коробка</td>
+                <td>+212</td><td>+240</td><td>+260</td><td>+280</td><td>+319</td><td>+381</td>
+            </tr>
+            <tr>
+                <td>Паллет (без сквозняка)</td>
+                <td>+192</td><td>+211</td><td>+220</td><td>+231</td><td>+260</td><td>+311</td>
+            </tr>
+            <tr style="background-color: var(--caution-bg); font-weight: bold; color: var(--caution-text);">
+                <td>Паллет (со сквозняком, без плёнки) [Лучший пассивный сценарий]</td>
+                <td>+137</td><td>+128</td><td>+110</td><td>+93</td><td>+95</td><td>+118</td>
+            </tr>
+            <tr>
+                <td>Паллет (обмотка «крест», 50%)</td>
+                <td>+164</td><td>+169</td><td>+164</td><td>+161</td><td>+176</td><td>+213</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>4. Физическое обоснование и общие выводы</h2>
+    
+    <div class="success-box">
+        <strong>✅ 2-я степень зрелости: Стабильная картина</strong><br>
+        Модель показывает, что при наличии сквозного движения воздуха система способна достичь теплового равновесия при температуре пульпы около <strong>13.0 – 13.5 °C</strong>. Текущая складская инфраструктура (9 °C + конвекция) в целом обеспечивает безопасные условия для хранения зелёных бананов.
+    </div>
+
+    <div class="caution-box">
+        <strong>⚠️ 4-я степень зрелости: Риск нарушения температурного режима</strong><br>
+        Модель демонстрирует, что при переходе в активную фазу созревания тепловыделение возрастает настолько, что даже в лучшем пассивном сценарии (сквозняк, отсутствие плёнки) тепловой баланс остаётся <strong>положительным (+93...+137 Вт)</strong> в диапазоне 12–17 °C. 
+        <br><br>
+        <strong>Механизм:</strong> Тепловыделение плодов начинает превышать пропускную способность пассивного теплоотвода через картон и зазоры. Обмотка стрейч-плёнкой дополнительно снижает теплоотвод примерно на 35%, усиливая эффект "термоса" в центре паллета.
+    </div>
+
+    <h3>Рекомендации на основе модели:</h3>
+    <ol>
+        <li><strong>Для 4-й степени зрелости:</strong> Не рекомендуется длительное складское хранение в паллетированном виде при текущих параметрах конвекции. Целесообразно минимизировать время нахождения на складе и организовать ускоренную отгрузку.</li>
+        <li><strong>Управление упаковкой:</strong> На этапе хранения бананов с признаками созревания рекомендуется избегать сплошной обмотки паллет стрейч-плёнкой, чтобы не блокировать естественный теплообмен.</li>
+        <li><strong>Перспектива модернизации:</strong> Если хранение созревающих бананов необходимо, модель указывает на потребность во внедрении систем принудительного сквозного охлаждения (forced-air cooling), способных радикально повысить коэффициент теплоотдачи.</li>
+    </ol>
+
+    <div class="footer">
+        Документ подготовлен на основе аналитического расчёта уравнения теплового баланса и справочных данных (ASHRAE). Коэффициент ×2 для 4-й степени зрелости является оценочным и служит для демонстрации общей физической тенденции. Для получения точных данных рекомендуются натурные температурные замеры.
+    </div>
+
+</body>
+</html>
