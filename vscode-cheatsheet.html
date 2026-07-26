@@ -1,403 +1,353 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VS Code Settings - Embedded Development Cheat Sheet</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VS Code Cheatsheet · GND/VCC</title>
     <style>
-        @page {
-            size: A4;
-            margin: 15mm;
-        }
-        
+        /* ---------- Базовые стили (экран) ---------- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1C140D;
-            color: #E0E0E0;
-            line-height: 1.4;
-            font-size: 10pt;
+            font-family: 'Segoe UI', 'Consolas', 'JetBrains Mono', monospace;
+            background: #1a1a1a;
+            color: #d4d4d4;
+            padding: 2rem 1rem;
+            display: flex;
+            justify-content: center;
         }
-        
         .container {
-            max-width: 210mm;
-            margin: 0 auto;
-            padding: 20px;
+            max-width: 1100px;
+            width: 100%;
+            background: #252525;
+            padding: 2rem 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            border: 1px solid #3a3a3a;
         }
-        
         h1 {
-            color: #FF7F00;
-            font-size: 24pt;
-            text-align: center;
-            margin-bottom: 10px;
-            border-bottom: 3px solid #FF7F00;
-            padding-bottom: 10px;
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #f0a030;
+            border-bottom: 3px solid #f0a030;
+            padding-bottom: 0.3rem;
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.5px;
         }
-        
+        .subhead {
+            font-size: 1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #3a3a3a;
+            padding-bottom: 0.5rem;
+        }
         h2 {
-            color: #FFD700;
-            font-size: 14pt;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            border-left: 4px solid #FF7F00;
-            padding-left: 10px;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #f0a030;
+            margin: 2rem 0 1rem 0;
+            border-left: 4px solid #f0a030;
+            padding-left: 0.8rem;
         }
-        
         h3 {
-            color: #FF8C00;
-            font-size: 11pt;
-            margin-top: 15px;
-            margin-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #e0c080;
+            margin: 1.5rem 0 0.5rem 0;
         }
-        
-        .section {
-            background: #261C14;
-            border: 1px solid #FF7F00;
-            border-radius: 5px;
-            padding: 12px;
-            margin-bottom: 15px;
-            page-break-inside: avoid;
+        .code-block {
+            background: #1e1e1e;
+            border-left: 4px solid #f0a030;
+            padding: 1rem 1.2rem;
+            margin: 0.8rem 0 1.2rem 0;
+            border-radius: 0 8px 8px 0;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 0.9rem;
+            color: #d4d4d4;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
-        
+        .code-block .key {
+            color: #f0a030;
+        }
+        .code-block .val {
+            color: #9cdcfe;
+        }
+        .code-block .cmt {
+            color: #6a9955;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 9pt;
+            font-size: 0.9rem;
+            background: #2a2a2a;
         }
-        
         th {
-            background: #FF7F00;
-            color: #1C140D;
-            padding: 8px;
+            background: #333;
+            color: #f0a030;
             text-align: left;
-            font-weight: bold;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 2px solid #f0a030;
         }
-        
         td {
-            padding: 6px 8px;
-            border-bottom: 1px solid #3A2A1E;
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid #3a3a3a;
         }
-        
-        tr:nth-child(even) {
-            background: #1C140D;
+        ul, ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            line-height: 1.6;
         }
-        
-        code {
-            font-family: 'JetBrains Mono', 'Consolas', monospace;
-            background: #1C140D;
-            color: #FFD700;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 9pt;
-        }
-        
-        .code-block {
-            background: #1C140D;
-            border: 1px solid #FF7F00;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: 'JetBrains Mono', 'Consolas', monospace;
-            font-size: 8pt;
-            line-height: 1.3;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .key {
-            background: #FF7F00;
-            color: #1C140D;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-family: 'Consolas', monospace;
-            font-size: 9pt;
-        }
-        
-        .comment {
-            color: #888888;
-            font-style: italic;
-        }
-        
-        .string {
-            color: #FFD700;
-        }
-        
-        .property {
-            color: #FF8C00;
-        }
-        
-        ul {
-            margin-left: 20px;
-            margin-top: 5px;
-        }
-        
         li {
-            margin-bottom: 4px;
+            margin-bottom: 0.3rem;
         }
-        
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+        .badge {
+            display: inline-block;
+            background: #3a3a3a;
+            color: #f0a030;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-left: 0.5rem;
         }
-        
+        hr {
+            border: none;
+            border-top: 1px solid #3a3a3a;
+            margin: 2rem 0;
+        }
+        .footer {
+            margin-top: 2.5rem;
+            text-align: right;
+            font-size: 0.8rem;
+            color: #7a7a7a;
+            border-top: 1px solid #3a3a3a;
+            padding-top: 1rem;
+        }
+
+        /* ---------- Печать (A4) ---------- */
         @media print {
             body {
                 background: white;
-                color: black;
+                color: #111;
+                padding: 0.5cm;
+                font-size: 11pt;
             }
-            
             .container {
                 max-width: 100%;
-                padding: 0;
+                background: white;
+                padding: 0.8cm 1.2cm;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
             }
-            
-            h1, h2, h3 {
-                color: #FF7F00 !important;
+            h1 {
+                color: #222;
+                border-bottom-color: #444;
             }
-            
-            .section {
-                background: #f5f5f5;
-                border: 1px solid #FF7F00;
+            h2 {
+                color: #222;
+                border-left-color: #444;
             }
-            
+            h3 {
+                color: #333;
+            }
+            .subhead {
+                color: #555;
+                border-bottom-color: #ddd;
+            }
             .code-block {
-                background: #f0f0f0;
-                border: 1px solid #FF7F00;
+                background: #f5f5f5;
+                border-left-color: #888;
+                color: #111;
+                font-size: 9pt;
+                padding: 0.6rem 0.8rem;
             }
-            
-            code {
-                background: #f0f0f0;
-                color: #FF7F00;
+            .code-block .key { color: #a05010; }
+            .code-block .val { color: #0055aa; }
+            .code-block .cmt { color: #3a7a3a; }
+            table {
+                background: white;
+                font-size: 9pt;
             }
-            
-            .key {
-                background: #FF7F00;
-                color: white;
-            }
-            
             th {
-                background: #FF7F00;
-                color: white;
+                background: #ddd;
+                color: #111;
+                border-bottom-color: #444;
             }
-            
-            .page-break {
-                page-break-before: always;
+            td {
+                border-bottom-color: #ccc;
+            }
+            .badge {
+                background: #eee;
+                color: #222;
+            }
+            .footer {
+                color: #555;
+                border-top-color: #ccc;
+            }
+            .no-print {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1> VS Code Settings<br>Embedded Development Cheat Sheet</h1>
-        
-        <div class="section">
-            <h2>📋 Основные настройки (settings.json)</h2>
-            
-            <h3>Визуальный слой (GND/VCC)</h3>
-            <div class="code-block">{
-  <span class="property">"workbench.colorCustomizations"</span>: {
-    <span class="property">"editor.background"</span>: <span class="string">"#1C140D"</span>,
-    <span class="property">"editor.foreground"</span>: <span class="string">"#E0E0E0"</span>,
-    <span class="property">"editorCursor.foreground"</span>: <span class="string">"#FF7F00"</span>,
-    <span class="property">"editorBracketHighlight.foreground1"</span>: <span class="string">"#FFD700"</span>,
-    <span class="property">"editorBracketHighlight.foreground2"</span>: <span class="string">"#FF8C00"</span>,
-    <span class="property">"editorBracketHighlight.foreground3"</span>: <span class="string">"#FFA500"</span>,
-    <span class="property">"editor.selectionBackground"</span>: <span class="string">"#FF7F0033"</span>
-  }
-}</div>
+<div class="container">
+    <h1>⚡ VS Code · GND/VCC</h1>
+    <div class="subhead">Шпаргалка для встроенной разработки · настройки, терминал, сниппеты</div>
 
-            <h3>Типографика</h3>
-            <div class="code-block">{
-  <span class="property">"editor.fontFamily"</span>: <span class="string">"'JetBrains Mono', Consolas, monospace"</span>,
-  <span class="property">"editor.fontLigatures"</span>: <span class="key">true</span>,
-  <span class="property">"editor.fontSize"</span>: <span class="key">14</span>,
-  <span class="property">"editor.lineHeight"</span>: <span class="key">22</span>
-}</div>
-
-            <h3>Поведение редактора</h3>
-            <div class="code-block">{
-  <span class="property">"editor.renderWhitespace"</span>: <span class="string">"boundary"</span>,
-  <span class="property">"editor.bracketPairColorization.enabled"</span>: <span class="key">true</span>,
-  <span class="property">"editor.guides.bracketPairs"</span>: <span class="key">true</span>,
-  <span class="property">"editor.minimap.enabled"</span>: <span class="key">false</span>,
-  <span class="property">"editor.cursorBlinking"</span>: <span class="string">"solid"</span>,
-  <span class="property">"editor.smoothScrolling"</span>: <span class="key">true</span>,
-  <span class="property">"editor.wordWrap"</span>: <span class="string">"off"</span>,
-  <span class="property">"editor.tabSize"</span>: <span class="key">4</span>,
-  <span class="property">"editor.insertSpaces"</span>: <span class="key">true</span>
-}</div>
-        </div>
-
-        <div class="section">
-            <h2>🧭 Навигация и контекст</h2>
-            <div class="code-block">{
-  <span class="property">"editor.stickyScroll.enabled"</span>: <span class="key">true</span>,
-  <span class="property">"editor.stickyScroll.maxLineCount"</span>: <span class="key">3</span>,
-  <span class="property">"breadcrumbs.enabled"</span>: <span class="key">true</span>,
-  <span class="property">"breadcrumbs.filePath"</span>: <span class="string">"last"</span>,
-  <span class="property">"breadcrumbs.symbolPath"</span>: <span class="string">"on"</span>,
-  <span class="property">"editor.guides.indentation"</span>: <span class="key">true</span>,
-  <span class="property">"editor.guides.highlightActiveIndentation"</span>: <span class="key">true</span>
-}
-
-<span class="comment">// Цвета для навигации</span>
-{
-  <span class="property">"editorStickyScroll.background"</span>: <span class="string">"#261C14"</span>,
-  <span class="property">"editorStickyScroll.border"</span>: <span class="string">"#FF7F00"</span>,
-  <span class="property">"editorStickyScroll.shadow"</span>: <span class="string">"#00000080"</span>,
-  <span class="property">"breadcrumb.background"</span>: <span class="string">"#1C140D"</span>,
-  <span class="property">"breadcrumb.foreground"</span>: <span class="string">"#888888"</span>,
-  <span class="property">"breadcrumb.focusForeground"</span>: <span class="string">"#FFD700"</span>,
-  <span class="property">"breadcrumb.activeSelectionForeground"</span>: <span class="string">"#FF7F00"</span>,
-  <span class="property">"editorIndentGuide.activeBackground"</span>: <span class="string">"#FF7F0066"</span>,
-  <span class="property">"editorIndentGuide.background"</span>: <span class="string">"#2A2A2A"</span>
-}</div>
-        </div>
-
-        <div class="page-break"></div>
-
-        <div class="section">
-            <h2>⌨️ Горячие клавиши</h2>
-            
-            <h3>Навигация и поиск</h3>
-            <table>
-                <tr>
-                    <th>Комбинация</th>
-                    <th>Действие</th>
-                </tr>
-                <tr><td><span class="key">F12</span></td><td>Перейти к определению</td></tr>
-                <tr><td><span class="key">Alt+F12</span></td><td>Peek Definition (в окошке)</td></tr>
-                <tr><td><span class="key">Shift+F12</span></td><td>Показать все ссылки</td></tr>
-                <tr><td><span class="key">Ctrl+T</span></td><td>Поиск символа (глобально)</td></tr>
-                <tr><td><span class="key">Ctrl+P</span></td><td>Быстрое открытие файла</td></tr>
-                <tr><td><span class="key">Ctrl+Shift+O</span></td><td>Перейти к символу в файле</td></tr>
-                <tr><td><span class="key">Ctrl+G</span></td><td>Перейти к строке</td></tr>
-                <tr><td><span class="key">Ctrl+B</span></td><td>Скрыть/показать боковую панель</td></tr>
-            </table>
-
-            <h3>Редактирование кода</h3>
-            <table>
-                <tr>
-                    <th>Комбинация</th>
-                    <th>Действие</th>
-                </tr>
-                <tr><td><span class="key">Ctrl+D</span></td><td>Выделить следующее вхождение</td></tr>
-                <tr><td><span class="key">Ctrl+F2</span></td><td>Выделить ВСЕ вхождения</td></tr>
-                <tr><td><span class="key">Alt+↑/↓</span></td><td>Переместить строку вверх/вниз</td></tr>
-                <tr><td><span class="key">Shift+Alt+↑/↓</span></td><td>Копировать строку вверх/вниз</td></tr>
-                <tr><td><span class="key">Ctrl+/</span></td><td>Закомментировать строку</td></tr>
-                <tr><td><span class="key">Shift+Alt+A</span></td><td>Блочный комментарий</td></tr>
-                <tr><td><span class="key">F2</span></td><td>Переименовать символ (рефакторинг)</td></tr>
-                <tr><td><span class="key">Ctrl+Shift+L</span></td><td>Выделить все совпадения</td></tr>
-                <tr><td><span class="key">Ctrl+Space</span></td><td>Автодополнение (IntelliSense)</td></tr>
-                <tr><td><span class="key">Shift+Alt+F</span></td><td>Форматировать весь документ</td></tr>
-            </table>
-
-            <h3>Специальные функции</h3>
-            <table>
-                <tr>
-                    <th>Комбинация</th>
-                    <th>Действие</th>
-                </tr>
-                <tr><td><span class="key">Ctrl+Shift+P</span></td><td>Command Palette</td></tr>
-                <tr><td><span class="key">Ctrl+`</span></td><td>Открыть/закрыть терминал</td></tr>
-                <tr><td><span class="key">Alt+Z</span></td><td>Перенос строк (Word Wrap)</td></tr>
-                <tr><td><span class="key">Ctrl+K Ctrl+F</span></td><td>Форматировать выделенный код</td></tr>
-            </table>
-        </div>
-
-        <div class="page-break"></div>
-
-        <div class="section">
-            <h2> Сниппеты (Snippets)</h2>
-            <p class="comment">File → Preferences → User Snippets → c.json или cpp.json</p>
-            
-            <h3>STM32 GPIO Init (триггер: <code>gpioinit</code>)</h3>
-            <div class="code-block">GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-/* Configure GPIO pin : PA5 */
-GPIO_InitStruct.Pin = GPIO_PIN_5;
-GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-GPIO_InitStruct.Pull = GPIO_NOPULL;
-GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);</div>
-
-            <h3>STM32 UART Callback (триггер: <code>uartcb</code>)</h3>
-            <div class="code-block">void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART1)
-    {
-        // Your code here
-        HAL_UART_Receive_IT(&huart1, &rxBuffer, 1);
-    }
-}</div>
-
-            <h3>Debug printf (триггер: <code>dbg</code>)</h3>
-            <div class="code-block">printf("[__FILE__:__LINE__] DEBUG: value = %d\n", value);</div>
-
-            <h3>Safe malloc (триггер: <code>smalloc</code>)</h3>
-            <div class="code-block">type *ptr = (type *)malloc(count * sizeof(type));
-if (ptr == NULL)
-{
-    // Error handling
-    return ERROR;
-}</div>
-        </div>
-
-        <div class="section">
-            <h2>🔌 Необходимые расширения</h2>
-            <ul>
-                <li><strong>clangd</strong> (от LLVM) - IntelliSense для C/C++</li>
-                <li><strong>C/C++</strong> (от Microsoft) - отключить IntelliSense в настройках</li>
-                <li><strong>Cortex-Debug</strong> (от Marus) - отладка STM32</li>
-                <li><strong>STM32 for VS Code</strong> (от ST) - работа с CubeMX</li>
-                <li><strong>CMake Tools</strong> (от Microsoft) - сборка проектов</li>
-                <li><strong>Assembly</strong> - подсветка синтаксиса .s/.asm</li>
-            </ul>
-            
-            <h3>Важно!</h3>
-            <p>После установки <code>clangd</code> отключи встроенный IntelliSense от Microsoft:</p>
-            <div class="code-block">"C_Cpp.intelliSenseEngine": "Disabled"</div>
-            
-            <h3>Для работы clangd с STM32</h3>
-            <p>Добавь в <code>CMakeLists.txt</code>:</p>
-            <div class="code-block">set(CMAKE_EXPORT_COMPILE_COMMANDS ON)</div>
-            <p>Или используй утилиту <code>bear</code> для Makefile:</p>
-            <div class="code-block">bear -- make</div>
-        </div>
-
-        <div class="section">
-            <h2>💡 Полезные команды (Ctrl+Shift+P)</h2>
-            <table>
-                <tr>
-                    <th>Команда</th>
-                    <th>Что делает</th>
-                </tr>
-                <tr><td><code>clangd: Restart Server</code></td><td>Перезапустить clangd</td></tr>
-                <tr><td><code>CMake: Configure</code></td><td>Переконфигурировать проект</td></tr>
-                <tr><td><code>CMake: Build</code></td><td>Собрать проект</td></tr>
-                <tr><td><code>Tasks: Run Task</code></td><td>Запустить задачу (make flash)</td></tr>
-                <tr><td><code>Preferences: Open Settings (JSON)</code></td><td>Открыть settings.json</td></tr>
-            </table>
-        </div>
-
-        <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px solid #FF7F00;">
-            <p style="color: #FF7F00; font-size: 10pt;">
-                <strong>GND/VCC Style</strong> | Embedded Development | STM32F746
-            </p>
-            <p style="color: #888888; font-size: 8pt; margin-top: 5px;">
-                Создано для чистого кода и ярких акцентов 🔶
-            </p>
-        </div>
+    <!-- ====== 1. БАЗОВЫЕ НАСТРОЙКИ ====== -->
+    <h2>1. Базовые настройки</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Параметр</th><th>Значение</th><th>Описание</th></tr></thead>
+            <tbody>
+                <tr><td><code>editor.fontSize</code></td><td>14</td><td>Размер шрифта редактора</td></tr>
+                <tr><td><code>editor.fontFamily</code></td><td>JetBrains Mono, Consolas</td><td>Моноширинный шрифт</td></tr>
+                <tr><td><code>editor.fontLigatures</code></td><td>true</td><td>Лигатуры (→, !=, ⇒)</td></tr>
+                <tr><td><code>editor.lineHeight</code></td><td>1.4</td><td>Межстрочный интервал</td></tr>
+                <tr><td><code>editor.renderWhitespace</code></td><td>boundary</td><td>Показывать пробелы по краям</td></tr>
+                <tr><td><code>editor.breadcrumbs.enabled</code></td><td>true</td><td>Навигационные «хлебные крошки»</td></tr>
+                <tr><td><code>editor.stickyScroll.enabled</code></td><td>true</td><td>Закрепление заголовков при скролле</td></tr>
+                <tr><td><code>workbench.colorTheme</code></td><td>GND/VCC (кастомная)</td><td>Тёмная с оранжевым акцентом</td></tr>
+            </tbody>
+        </table>
     </div>
+
+    <!-- ====== 2. ТЕРМИНАЛ ====== -->
+    <h2>2. Терминал (читаемый шрифт)</h2>
+    <p>Добавь в <code>settings.json</code> (глобальные или проекта):</p>
+    <div class="code-block">
+<span class="cmt">// ------------------ Терминал ------------------</span>
+<span class="key">"terminal.integrated.fontSize"</span>: <span class="val">14</span>,
+<span class="key">"terminal.integrated.fontFamily"</span>: <span class="val">"JetBrains Mono, Consolas, 'Courier New', monospace"</span>,
+<span class="key">"terminal.integrated.lineHeight"</span>: <span class="val">1.2</span>,
+<span class="key">"terminal.integrated.cursorBlinking"</span>: <span class="val">false</span>,
+<span class="key">"terminal.integrated.cursorStyle"</span>: <span class="val">"block"</span>,
+<span class="key">"terminal.integrated.minimumContrastRatio"</span>: <span class="val">4.5</span>,
+<span class="cmt">// Для WSL (если используется)</span>
+<span class="key">"terminal.integrated.shell.windows"</span>: <span class="val">"C:\\Windows\\System32\\wsl.exe"</span>,
+<span class="cmt">// Для Git Bash</span>
+<span class="cmt">// "terminal.integrated.shell.windows": "C:\\Program Files\\Git\\bin\\bash.exe"</span>
+    </div>
+    <p><span class="badge">Совет</span> Если шрифт всё ещё мелкий — увеличь <code>fontSize</code> до 16–18.</p>
+
+    <!-- ====== 3. СНИППЕТЫ (C/C++) ====== -->
+    <h2>3. Сниппеты для C / C++</h2>
+    <p>Файл <code>.vscode/cpp.json</code> (или глобальные):</p>
+    <div class="code-block">
+{
+  <span class="cmt">// Цикл for с индексом</span>
+  <span class="key">"For loop"</span>: {
+    <span class="key">"prefix"</span>: <span class="val">"fori"</span>,
+    <span class="key">"body"</span>: [
+      <span class="val">"for (int ${1:i} = 0; ${1:i} < ${2:count}; ${1:i}++) {"</span>,
+      <span class="val">"\t${3:// body}"</span>,
+      <span class="val">"}"</span>
+    ],
+    <span class="key">"description"</span>: <span class="val">"Стандартный цикл for"</span>
+  },
+  <span class="cmt">// Обратный цикл</span>
+  <span class="key">"For reverse"</span>: {
+    <span class="key">"prefix"</span>: <span class="val">"forr"</span>,
+    <span class="key">"body"</span>: [
+      <span class="val">"for (int ${1:i} = ${2:size} - 1; ${1:i} >= 0; ${1:i}--) {"</span>,
+      <span class="val">"\t${3:// body}"</span>,
+      <span class="val">"}"</span>
+    ],
+    <span class="key">"description"</span>: <span class="val">"Цикл for в обратном порядке"</span>
+  },
+  <span class="cmt">// Include guard для заголовка</span>
+  <span class="key">"Header guard"</span>: {
+    <span class="key">"prefix"</span>: <span class="val">"ifdefh"</span>,
+    <span class="key">"body"</span>: [
+      <span class="val">"#ifndef ${1:HEADER_NAME}_H"</span>,
+      <span class="val">"#define ${1:HEADER_NAME}_H"</span>,
+      <span class="val">""</span>,
+      <span class="val">"${2:// содержимое}"</span>,
+      <span class="val">""</span>,
+      <span class="val">"#endif // ${1:HEADER_NAME}_H"</span>
+    ],
+    <span class="key">"description"</span>: <span class="val">"Стандартный include guard"</span>
+  },
+  <span class="cmt">// Шаблон main() для embedded</span>
+  <span class="key">"Main embedded"</span>: {
+    <span class="key">"prefix"</span>: <span class="val">"mainemb"</span>,
+    <span class="key">"body"</span>: [
+      <span class="val">"#include <stdint.h>"</span>,
+      <span class="val">"#include <stdbool.h>"</span>,
+      <span class="val">""</span>,
+      <span class="val">"int main(void) {"</span>,
+      <span class="val">"\t${1:// Инициализация}"</span>,
+      <span class="val">"\t"</span>,
+      <span class="val">"\twhile (1) {"</span>,
+      <span class="val">"\t\t${2:// Основной цикл}"</span>,
+      <span class="val">"\t}"</span>,
+      <span class="val">"\t"</span>,
+      <span class="val">"\treturn 0;"</span>,
+      <span class="val">"}"</span>
+    ],
+    <span class="key">"description"</span>: <span class="val">"main() для встроенных систем (бесконечный цикл)"</span>
+  }
+}
+    </div>
+    <p><span class="badge">Использование</span> Набери <code>fori</code> в .c/.cpp и нажми <kbd>Tab</kbd> — появится шаблон. Перемещайся по полям с помощью <kbd>Tab</kbd>.</p>
+
+    <!-- ====== 4. ПОЛЕЗНЫЕ СОЧЕТАНИЯ ====== -->
+    <h2>4. Сочетания клавиш</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Действие</th><th>Windows/Linux</th><th>macOS</th></tr></thead>
+            <tbody>
+                <tr><td>Открыть настройки (JSON)</td><td><kbd>Ctrl+Shift+P</kbd> → <code>settings json</code></td><td><kbd>Cmd+Shift+P</kbd></td></tr>
+                <tr><td>Перейти к символу (в файле)</td><td><kbd>Ctrl+Shift+O</kbd></td><td><kbd>Cmd+Shift+O</kbd></td></tr>
+                <tr><td>Перейти к символу (в проекте)</td><td><kbd>Ctrl+T</kbd></td><td><kbd>Cmd+T</kbd></td></tr>
+                <tr><td>Открыть терминал</td><td><kbd>Ctrl+`</kbd></td><td><kbd>Ctrl+`</kbd></td></tr>
+                <tr><td>Комментарий / раскомментировать</td><td><kbd>Ctrl+/</kbd></td><td><kbd>Cmd+/</kbd></td></tr>
+                <tr><td>Поиск по файлам</td><td><kbd>Ctrl+P</kbd></td><td><kbd>Cmd+P</kbd></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ====== 5. ДОПОЛНИТЕЛЬНО ====== -->
+    <h2>5. Расширения для embedded</h2>
+    <ul>
+        <li><strong>PlatformIO</strong> — фреймворк для IoT / микроконтроллеров</li>
+        <li><strong>Cortex-Debug</strong> — отладка ARM Cortex-M</li>
+        <li><strong>CMake Tools</strong> — управление сборкой через CMake</li>
+        <li><strong>Better C++ Syntax</strong> — подсветка тем, шаблонов, концептов</li>
+        <li><strong>Doxygen Documentation Generator</strong> — автодокументация</li>
+    </ul>
+
+    <!-- ====== 6. КАК НАСТРОИТЬ ТЕМУ GND/VCC ====== -->
+    <h2>6. Тема GND/VCC (быстрый старт)</h2>
+    <p>Создай папку <code>.vscode</code> в проекте, внутри — файл <code>settings.json</code> с этими цветами (или используй готовую тему из Marketplace).</p>
+    <div class="code-block">
+<span class="cmt">// Фрагмент цветовой схемы</span>
+<span class="key">"workbench.colorCustomizations"</span>: {
+    <span class="key">"[Твоя тема]"</span>: {
+        <span class="key">"editor.background"</span>: <span class="val">"#1a1a1a"</span>,
+        <span class="key">"editor.foreground"</span>: <span class="val">"#d4d4d4"</span>,
+        <span class="key">"editorCursor.foreground"</span>: <span class="val">"#f0a030"</span>,
+        <span class="key">"editor.selectionBackground"</span>: <span class="val">"#3a3a3a"</span>,
+        <span class="key">"editorLineNumber.foreground"</span>: <span class="val">"#6a6a6a"</span>,
+        <span class="key">"activityBar.background"</span>: <span class="val">"#252525"</span>
+    }
+}
+    </div>
+
+    <hr />
+    <div class="footer">
+        Версия 2.0 · 26 июля 2026 · <span class="no-print">(для печати используй Ctrl+P)</span>
+    </div>
+</div>
 </body>
 </html>
