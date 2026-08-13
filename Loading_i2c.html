@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Визуализация активности шины I2C через ШИМ</title>
+    <style>
+        /* ——— Base Reset & Typography ——— */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0b0e14;
+            color: #c9d1d9;
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 2.5rem 2.8rem;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px -12px rgba(0,0,0,0.8);
+            border: 1px solid #30363d;
+        }
+        h1, h2, h3 {
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            margin-top: 1.6em;
+            margin-bottom: 0.5em;
+            color: #f0f6fc;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+            border-bottom: 2px solid #238636;
+            padding-bottom: 0.4rem;
+        }
+        h2 {
+            font-size: 1.8rem;
+            border-left: 6px solid #238636;
+            padding-left: 1rem;
+            background: #0d1117;
+            border-radius: 0 8px 8px 0;
+        }
+        h3 {
+            font-size: 1.3rem;
+            color: #b1bac4;
+            margin-top: 1.8rem;
+        }
+        a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ——— Code & Highlight ——— */
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e6edf3;
+            margin: 1.2rem 0;
+            position: relative;
+        }
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1c2128;
+            padding: 0.2rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #f0883e;
+            border: 1px solid #30363d;
+        }
+        .tag {
+            display: inline-block;
+            background: #23863633;
+            border: 1px solid #238636;
+            color: #3fb950;
+            padding: 0.2rem 0.9rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .warn {
+            background: #d2992233;
+            border-left: 6px solid #d29922;
+            padding: 0.8rem 1.4rem;
+            border-radius: 12px;
+            margin: 1.4rem 0;
+            color: #e3b341;
+        }
+        .good {
+            background: #23863633;
+            border-left: 6px solid #238636;
+            padding: 0.8rem 1.4rem;
+            border-radius: 12px;
+            margin: 1.4rem 0;
+            color: #7ee787;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.2rem;
+            margin: 1.6rem 0;
+        }
+        .card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 20px;
+            padding: 1.2rem 1.4rem;
+        }
+        .card h4 {
+            color: #f0f6fc;
+            margin: 0 0 0.3rem 0;
+            font-size: 1.1rem;
+        }
+        hr {
+            border: 0;
+            height: 1px;
+            background: #30363d;
+            margin: 2rem 0;
+        }
+        @media (max-width: 640px) {
+            body { padding: 0.8rem; }
+            .container { padding: 1.2rem; }
+            h1 { font-size: 1.8rem; }
+            pre { font-size: 0.75rem; padding: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>📡 Визуализация активности шины I2C</h1>
+    <p style="font-size: 1.2rem; color: #b1bac4; margin-bottom: 0.4rem;">
+        Аппаратный мониторинг загрузки шины через ШИМ-индикатор. <br>
+        <span class="tag">чистый регистровый доступ</span>
+        <span class="tag">без HAL-блокировок</span>
+        <span class="tag">ISR-safe</span>
+    </p>
+
+    <!-- ——— 2. ОПИСАНИЕ ИДЕИ ——— -->
+    <h2>💡 2. Описание идеи</h2>
+    <p>
+        Мы строим <strong>индикатор интенсивности</strong> трафика на шине I2C.
+        Вместо дискретного «горит/не горит» светодиод <strong>плавно меняет яркость</strong>
+        пропорционально частоте пакетов.
+    </p>
+    <ul style="margin: 0.8rem 0 1.2rem 1.8rem; list-style-type: '▸ ';">
+        <li><strong>Ядро идеи:</strong> В прерывании по завершению I2C (DMA или событие) мы считываем текущее значение счётчика ШИМ-таймера.</li>
+        <li><strong>Логика изменения яркости:</strong> Если счётчик находится <strong>выше</strong> середины периода — уменьшаем яркость (сигнал пришёл поздно, шина свободна). Если <strong>ниже</strong> — увеличиваем (активность высокая).</li>
+        <li><strong>Никаких дополнительных таймеров:</strong> Используется <strong>единственный</strong> ШИМ-таймер, который и так генерирует сигнал на светодиод.</li>
+        <li><strong>Фоновый режим:</strong> Весь код выполняется в прерываниях, <strong>не нагружая</strong> основной поток (или FreeRTOS-задачи).</li>
+    </ul>
+    <div class="good">
+        <strong>✅ Ключевое преимущество:</strong> Минимальное вмешательство в периферию. Один таймер, одно прерывание, никаких внешних счётчиков.
+    </div>
+
+    <!-- ——— 3. АЛГОРИТМ ——— -->
+    <h2>⚙️ 3. Алгоритм работы</h2>
+    <div style="background: #0d1117; border-radius: 20px; padding: 1.2rem 1.8rem; border: 1px solid #30363d;">
+        <p><strong>Псевдокод (платформонезависимый):</strong></p>
+        <pre style="margin: 0.2rem 0 0 0; border: none; background: transparent; padding: 0.2rem 0;">
+// Глобальные переменные (volatile, aligned)
+volatile uint32_t brightness = 500;   // текущая яркость (0…1000)
+const uint32_t STEP = 8;              // шаг изменения
+const uint32_t MAX_BRIGHT = 1000;
+
+// ISR по завершению I2C-передачи
+void I2C_Complete_ISR(void) {
+    // 1. Фиксируем текущий счётчик ШИМ-таймера
+    uint32_t cnt = TIMER-&gt;CNT;
+    uint32_t half = TIMER-&gt;ARR / 2;
+
+    // 2. Корректируем яркость
+    if (cnt > half) {
+        if (brightness &lt; MAX_BRIGHT) brightness += STEP;
+    } else {
+        if (brightness &gt; 0) brightness -= STEP;
+    }
+
+    // 3. Обновляем регистр сравнения (скважность)
+    TIMER-&gt;CCR = brightness;
+
+    // 4. Сбрасываем флаг прерывания (зависит от платформы)
+}</pre>
+    </div>
+    <div class="warn">
+        <strong>⚠️ Важное замечание:</strong> <code>half = ARR / 2</code> вычисляется <strong>один раз</strong> при инициализации, а не в ISR. В примере выше — для наглядности.
+    </div>
+
+    <!-- ——— 4. СОВМЕСТИМОСТЬ И КАМНИ ——— -->
+    <h2>🧩 4. Совместимость и подводные камни</h2>
+    <div class="grid-3">
+        <div class="card"><h4>🔵 STM32 (HAL)</h4>
+            <ul style="list-style-type: '▪ '; padding-left: 0.8rem; font-size: 0.95rem;">
+                <li>Используйте <strong>TIMx</strong> (не SysTick).</li>
+                <li>Выравнивание <code>__attribute__((aligned(4)))</code> обязательно.</li>
+                <li>Приоритет ISR — <strong>самый низкий</strong> (≥ 5).</li>
+                <li>Операции с <code>CCR</code> и <code>CNT</code> — через регистры, минуя HAL.</li>
+            </ul>
+        </div>
+        <div class="card"><h4>🟢 ESP32 (ESP‑IDF)</h4>
+            <ul style="list-style-type: '▪ '; padding-left: 0.8rem; font-size: 0.95rem;">
+                <li>Используйте <strong>GPTimer</strong> + <strong>LEDC</strong>.</li>
+                <li><strong>Не отключайте</strong> прерывания глобально.</li>
+                <li>Все вызовы в ISR — только <code>_ISR</code>-safe.</li>
+                <li>Приоритет ISR — <strong>1</strong> (низкий).</li>
+            </ul>
+        </div>
+        <div class="card"><h4>🔴 AVR (8‑бит)</h4>
+            <ul style="list-style-type: '▪ '; padding-left: 0.8rem; font-size: 0.95rem;">
+                <li>Используйте <strong>Timer1</strong> в режиме Fast PWM.</li>
+                <li>Чтение <code>TCNT1</code> и запись <code>OCR1A</code> — напрямую.</li>
+                <li>Переменные <code>volatile uint16_t</code> — <strong>атомарны</strong> по чтению/записи.</li>
+                <li>Прерывания по I2C (TWINT) — стандартный вектор.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>⚠️ Общие подводные камни</h3>
+    <ul style="margin-left: 1.8rem; list-style-type: '▸ ';">
+        <li><strong>Выравнивание:</strong> На STM32 <strong>критично</strong> для 32‑битных переменных, используемых в ISR. Всегда <code>aligned(4)</code>.</li>
+        <li><strong>Атомарность:</strong> На STM32 запись в <code>CCR</code> атомарна, а <code>brightness++</code> — нет. Используйте <code>brightness += STEP</code> как одну операцию RMW, но если есть риск гонки — оборачивайте в критическую секцию.</li>
+        <li><strong>Приоритеты:</strong> Если ваш ISR выше системного — вы <strong>завалите</strong> HAL, RTOS или Wi‑Fi.</li>
+        <li><strong>Длительность ISR:</strong> Чтение регистра + сравнение + запись — это <strong>&lt; 1 мкс</strong> на Cortex‑M. Не вызывайте <code>printf</code>, <code>HAL_Delay</code> или <code>vTaskDelay</code>.</li>
+    </ul>
+
+    <!-- ——— 5. STM32 ——— -->
+    <h2>🔵 5. Реализация на STM32 (CubeIDE / HAL)</h2>
+    <p><span class="tag">CMSIS</span> <span class="tag">регистровый доступ</span> <span class="tag">без HAL-блокировок</span></p>
+    <pre>
+/* ============================================================
+   STM32 – индикатор активности I2C через ШИМ (TIM2, канал 1)
+   ============================================================ */
+
+#include "stm32f4xx.h"   // под ваш конкретный камень
+
+// ——— Глобальные переменные (выровнены, volatile) ———
+volatile uint32_t led_brightness __attribute__((aligned(4))) = 500;
+const uint32_t STEP = 8;
+const uint32_t MAX_BRIGHT = 999;
+
+// ——— Инициализация ШИМ (вызывается один раз) ———
+void pwm_init(void) {
+    // 1. Тактирование TIM2
+    RCC-&gt;APB1ENR |= RCC_APB1ENR_TIM2EN;
+
+    // 2. Настройка GPIO (PA0 – TIM2_CH1)
+    RCC-&gt;AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    GPIOA-&gt;MODER   |= GPIO_MODER_MODER0_1;   // AF
+    GPIOA-&gt;AFR[0]  |= (1 &lt;&lt; 0);             // AF1 = TIM2_CH1
+
+    // 3. Настройка TIM2: PWM mode 1, частота ~1 кГц
+    TIM2-&gt;PSC  = 8400 - 1;       // 84 МГц → 10 кГц
+    TIM2-&gt;ARR  = 1000 - 1;        // период 1000 тиков → 100 мс
+    TIM2-&gt;CCMR1 = TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2; // PWM mode 1
+    TIM2-&gt;CCER  = TIM_CCER_CC1E;  // выход включён
+    TIM2-&gt;CR1  |= TIM_CR1_CEN;    // запуск таймера
+
+    // 4. Начальная яркость 50%
+    TIM2-&gt;CCR1 = led_brightness;
+}
+
+// ——— ISR по завершению I2C-передачи (колбэк HAL) ———
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    // 1. Читаем счётчик (атомарно, 32 бита)
+    uint32_t cnt = TIM2-&gt;CNT;
+
+    // 2. Сравниваем с половиной периода (вычислено один раз при старте)
+    //    HALF_PERIOD = TIM2-&gt;ARR / 2 (вынесено в константу)
+    if (cnt &gt; 500) {
+        if (led_brightness &lt; MAX_BRIGHT) {
+            led_brightness += STEP;
+        }
+    } else {
+        if (led_brightness &gt; 0) {
+            led_brightness -= STEP;
+        }
+    }
+
+    // 3. Запись в регистр сравнения (атомарно)
+    TIM2-&gt;CCR1 = led_brightness;
+
+    // 4. Сброс флага прерывания I2C (если нужно)
+    //    __HAL_I2C_CLEAR_FLAG(hi2c, ...);
+}
+</pre>
+    <div class="warn">
+        <strong>⚠️ STM32:</strong> Убедитесь, что приоритет прерывания I2C <strong>ниже</strong>, чем у системных (NVIC_SetPriority(&lt;IRQ&gt;, 5, 0)).
+    </div>
+
+    <!-- ——— 6. ESP32 ——— -->
+    <h2>🟢 6. Реализация на ESP32 (ESP‑IDF)</h2>
+    <p><span class="tag">GPTimer</span> <span class="tag">LEDC</span> <span class="tag">ISR‑safe</span></p>
+    <pre>
+/* ============================================================
+   ESP32 – индикатор активности I2C через ШИМ (LEDC + GPTimer)
+   ============================================================ */
+
+#include "driver/ledc.h"
+#include "driver/gptimer.h"
+
+// ——— Глобальные переменные ———
+volatile uint32_t led_brightness = 500;
+const uint32_t STEP = 8;
+const uint32_t MAX_BRIGHT = 1000;
+
+// ——— Инициализация LEDC (ШИМ) ———
+void pwm_init(void) {
+    ledc_timer_config_t timer_cfg = {
+        .speed_mode       = LEDC_LOW_SPEED_MODE,
+        .timer_num        = LEDC_TIMER_0,
+        .freq_hz          = 1000,
+        .duty_resolution  = LEDC_TIMER_10_BIT, // 0…1023
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&amp;timer_cfg);
+
+    ledc_channel_config_t ch_cfg = {
+        .speed_mode     = LEDC_LOW_SPEED_MODE,
+        .channel        = LEDC_CHANNEL_0,
+        .timer_sel      = LEDC_TIMER_0,
+        .gpio_num       = GPIO_NUM_2,
+        .duty           = led_brightness
+    };
+    ledc_channel_config(&amp;ch_cfg);
+}
+
+// ——— Инициализация GPTimer (только для счётчика, не для ШИМ) ———
+void counter_init(void) {
+    gptimer_config_t cfg = {
+        .resolution_hz = 1 * 1000 * 1000, // 1 МГц
+        .direction     = GPTIMER_COUNT_UP,
+    };
+    gptimer_handle_t timer;
+    gptimer_new_timer(&amp;cfg, &amp;timer);
+    gptimer_enable(timer);
+    gptimer_start(timer);
+    // Счётчик просто бежит, мы читаем его значение в ISR
+}
+
+// ——— ISR по завершению I2C (драйвер ESP-IDF) ———
+void i2c_complete_isr(void *arg) {
+    // 1. Читаем текущий счётчик GPTimer (ISR-safe)
+    uint64_t cnt = 0;
+    gptimer_get_raw_count(timer_handle, &amp;cnt);
+
+    // 2. Половина периода = 500000 (при 1 МГц и периоде 1 с)
+    //    Вынесено в константу HALF_PERIOD
+    if (cnt &gt; 500000) {
+        if (led_brightness &lt; MAX_BRIGHT) led_brightness += STEP;
+    } else {
+        if (led_brightness &gt; 0) led_brightness -= STEP;
+    }
+
+    // 3. Обновляем скважность LEDC (ISR-safe)
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, led_brightness);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+}
+</pre>
+    <div class="good">
+        <strong>✅ ESP32:</strong> Не используем <code>taskENTER_CRITICAL()</code> в ISR. Все вызовы — ISR-безопасны.
+    </div>
+
+    <!-- ——— 7. AVR ——— -->
+    <h2>🔴 7. Реализация на AVR (Arduino / avr‑libc)</h2>
+    <p><span class="tag">Timer1</span> <span class="tag">Fast PWM</span> <span class="tag">TWI</span></p>
+    <pre>
+/* ============================================================
+   AVR (ATmega328p) – индикатор активности I2C через ШИМ (Timer1)
+   ============================================================ */
+
+#include &lt;avr/io.h&gt;
+#include &lt;avr/interrupt.h&gt;
+
+// ——— Глобальные переменные (volatile, 16 бит) ———
+volatile uint16_t led_brightness = 500;
+const uint16_t STEP = 8;
+const uint16_t MAX_BRIGHT = 999;
+
+// ——— Инициализация ШИМ (Fast PWM, OC1A) ———
+void pwm_init(void) {
+    DDRB |= (1 &lt;&lt; PB1);          // OC1A как выход
+
+    TCCR1A = (1 &lt;&lt; WGM10) | (1 &lt;&lt; WGM11) | (1 &lt;&lt; COM1A1); // Fast PWM 10-bit
+    TCCR1B = (1 &lt;&lt; WGM12) | (1 &lt;&lt; CS10);                  // clk/1
+
+    OCR1A = led_brightness;      // начальная яркость
+}
+
+// ——— ISR по завершению I2C (вектор TWI) ———
+ISR(TWI_vect) {
+    // 1. Читаем счётчик Timer1 (16 бит, атомарно)
+    uint16_t cnt = TCNT1;
+
+    // 2. Сравниваем с половиной периода (1023 / 2 ≈ 511)
+    if (cnt &gt; 511) {
+        if (led_brightness &lt; MAX_BRIGHT) led_brightness += STEP;
+    } else {
+        if (led_brightness &gt; 0) led_brightness -= STEP;
+    }
+
+    // 3. Обновляем регистр сравнения (атомарно)
+    OCR1A = led_brightness;
+
+    // 4. Сброс флага прерывания TWI (аппаратно, явно не требуется)
+    //    TWCR |= (1 &lt;&lt; TWINT);
+}
+</pre>
+    <div class="warn">
+        <strong>⚠️ AVR:</strong> Для корректной работы I2C (TWI) не забудьте настроить скорость и разрешить прерывания <code>sei()</code>.
+    </div>
+
+    <hr>
+
+    <h2>📌 Заключение</h2>
+    <p>
+        Мы построили <strong>аппаратно-независимый</strong> алгоритм визуализации загрузки шины I2C,
+        который работает на трёх принципиально разных архитектурах.
+    </p>
+    <ul style="margin-left: 1.8rem; list-style-type: '✓ ';">
+        <li><strong>STM32:</strong> Регистровый доступ, низкий приоритет ISR, строгое выравнивание.</li>
+        <li><strong>ESP32:</strong> ISR-безопасные вызовы, без глобальных блокировок, низкий приоритет.</li>
+        <li><strong>AVR:</strong> Прямая работа с регистрами, атомарность 16‑битных операций.</li>
+    </ul>
+    <p style="margin-top: 1.2rem;">
+        Этот подход можно адаптировать под любую периферию: SPI, UART, внешние прерывания — везде, где есть прерывания и ШИМ-таймер.
+    </p>
+    <div class="good" style="margin-top: 1.2rem;">
+        <strong>🏁 Итог:</strong> Мы получили <strong>красивый, ресурсоэффективный и переносимый</strong> индикатор активности, который не требует внешних компонентов и работает в фоне, не нагружая основную логику.
+    </div>
+
+</div>
+<!-- ——— НАСТРОЙКА ПРИОРИТЕТОВ ПРЕРЫВАНИЙ ——— -->
+<h2>⚡ Настройка приоритетов прерываний (ISR)</h2>
+<p>Корректный приоритет — <strong>единственное, что спасает</strong> от падения системы, зависания Wi-Fi и сбоев DMA. Ниже — готовые фрагменты для каждой платформы.</p>
+
+<div class="grid-3">
+    <div class="card">
+        <h4>🔵 STM32 (HAL / CMSIS)</h4>
+        <pre style="font-size:0.8rem; background:#0d1117; border:1px solid #30363d; border-radius:12px; padding:0.6rem 0.8rem;">
+/* I2C1 – самый низкий приоритет (5) */
+HAL_NVIC_SetPriority(I2C1_EV_IRQn, 5, 0);
+HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+
+/* TIM2 – ещё ниже (6), чтобы не мешать I2C */
+HAL_NVIC_SetPriority(TIM2_IRQn, 6, 0);
+HAL_NVIC_EnableIRQ(TIM2_IRQn);</pre>
+        <div class="warn" style="margin-top:0.4rem; padding:0.4rem 0.8rem;">
+            ⚠️ Чем <strong>выше</strong> число — тем <strong>ниже</strong> приоритет.
+        </div>
+    </div>
+    <div class="card">
+        <h4>🟢 ESP32 (ESP‑IDF)</h4>
+        <pre style="font-size:0.8rem; background:#0d1117; border:1px solid #30363d; border-radius:12px; padding:0.6rem 0.8rem;">
+/* I2C – низкий приоритет (1) */
+i2c_config_t conf = {
+    .intr_priority = 1,   // 1 — минимальный
+    // ...
+};
+
+/* GPTimer – тоже 1 */
+gptimer_config_t timer_cfg = {
+    .intr_priority = 1,
+    // ...
+};</pre>
+        <div class="good" style="margin-top:0.4rem; padding:0.4rem 0.8rem;">
+            ✅ На ESP32 приоритет <strong>1</strong> — самый низкий. Не трогаем 0 — там системные прерывания.
+        </div>
+    </div>
+    <div class="card">
+        <h4>🔴 AVR (avr‑libc)</h4>
+        <pre style="font-size:0.8rem; background:#0d1117; border:1px solid #30363d; border-radius:12px; padding:0.6rem 0.8rem;">
+/* AVR — аппаратные приоритеты фиксированы:
+   - RESET (высший)
+   - INT0
+   - TWI (I2C) — средний
+   - TIMER1 — низший
+*/
+/* Всё, что нужно — разрешить прерывания */
+sei();  // глобально</pre>
+        <div class="warn" style="margin-top:0.4rem; padding:0.4rem 0.8rem;">
+            ⚠️ На AVR приоритеты <strong>не настраиваются</strong>. Но вектор TWI имеет приоритет выше, чем TIMER1 — это безопасно.
+        </div>
+    </div>
+</div>
+
+<!-- ——— АВТОРСТВО ——— -->
+<hr>
+<div style="background: #0d1117; border: 1px solid #30363d; border-radius: 24px; padding: 1.6rem 2rem; text-align: center; margin-top: 2.4rem;">
+    <p style="font-size: 1.1rem; color: #b1bac4; margin: 0;">
+        🧠 Совместная инженерная работа
+    </p>
+    <p style="font-size: 1.3rem; font-weight: 400; margin: 0.3rem 0 0 0; color: #f0f6fc;">
+        <strong>Lynx</strong> <span style="color:#8b949e;">&amp;</span> <strong>DeepSeek</strong>
+    </p>
+    <p style="font-size: 0.9rem; color: #8b949e; margin-top: 0.4rem;">
+        Идея, постановка задачи, жёсткая критика HAL и выравнивания — Lynx.<br>
+        Оформление, кодовые шаблоны, документация — DeepSeek.
+    </p>
+    <p style="font-size: 0.85rem; color: #6e7681; margin-top: 0.6rem;">
+        «Мы не взяли готовое — мы спроектировали своё, от регистра до светодиода».
+    </p>
+</div>
+</div>
+  <!-- ——— ТРИ СВЕТОДИОДА ——— -->
+<h2>💡 Три светодиода — максимум наглядности</h2>
+<p>
+    Вместо того чтобы мучиться с одним ШИМ-каналом и мультиплексированием, мы просто берём 
+    <strong>три светодиода</strong> и назначаем каждому свою шину.
+</p>
+
+<div class="good" style="margin: 1rem 0;">
+    <strong>✅ Преимущества:</strong>
+    <ul style="margin: 0.4rem 0 0 1.8rem; list-style-type: '▸ ';">
+        <li>Каждая шина — отдельный цвет. Глаз мгновенно определяет проблемную.</li>
+        <li>Нет конфликтов прерываний — каждое обновляет только свой регистр.</li>
+        <li>Легко масштабировать — добавили шину, добавили светодиод.</li>
+        <li>Ног на МК много — это не серверная стойка, это <strong>творчество</strong>.</li>
+    </ul>
+</div>
+
+<h3>⚙️ Принцип работы (напоминание)</h3>
+<ul style="margin-left: 1.8rem; list-style-type: '▪ ';">
+    <li>Каждая шина (I2C, SPI, UART) имеет свой ШИМ-таймер и свой светодиод.</li>
+    <li>В прерывании по завершению передачи мы читаем <code>CNT</code> таймера и корректируем <code>CCR</code> (яркость).</li>
+    <li>Нет IF — только линейный код.</li>
+    <li>Приоритет прерываний — самый низкий, чтобы не мешать системным задачам.</li>
+</ul>
+
+<div class="warn" style="margin: 1rem 0;">
+    <strong>⚠️ Важно:</strong> Если таймеров на всех не хватает — можно использовать <strong>один таймер с тремя каналами</strong> (STM32 это позволяет) или сделать <strong>аппаратный мультиплексор</strong> на логике.
+</div>
+
+<!-- ——— АВТОРСТВО ——— -->
+<hr>
+<div style="background: #0d1117; border: 1px solid #30363d; border-radius: 24px; padding: 1.6rem 2rem; text-align: center; margin-top: 2.4rem;">
+    <p style="font-size: 1.1rem; color: #b1bac4; margin: 0;">
+        🧠 Совместная инженерная работа
+    </p>
+    <p style="font-size: 1.3rem; font-weight: 400; margin: 0.3rem 0 0 0; color: #f0f6fc;">
+        <strong>Lynx</strong> <span style="color:#8b949e;">&amp;</span> <strong>DeepSeek</strong>
+    </p>
+    <p style="font-size: 0.9rem; color: #8b949e; margin-top: 0.4rem;">
+        Идея, постановка, жёсткая критика — Lynx.<br>
+        Оформление, код, документация — DeepSeek.
+    </p>
+    <p style="font-size: 0.85rem; color: #6e7681; margin-top: 0.6rem;">
+        «Мы не взяли готовое — мы спроектировали своё. От регистра до светодиода. Творчество, а не конвейер».
+    </p>
+</div>
+</body>
+</html>
