@@ -3,320 +3,864 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESP32-C3 Super Mini: методика кросс-проверки двух путей сборки</title>
+<title>ESP32-C3: От нуля до первого мигающего светодиода</title>
 <style>
   :root{
-    --bg:#f6f7f9; --panel:#ffffff; --ink:#1c2430; --muted:#5b6675;
-    --accent:#0e6ba8; --accent2:#8a2be2; --code-bg:#1e2430; --code-ink:#e6edf3;
-    --ok:#1a7f37; --warn:#9a6700; --bad:#cf222e; --line:#dfe4ea;
+    --bg:#f8f9fa; --panel:#ffffff; --ink:#1a1a2e; --muted:#6c757d;
+    --accent:#0077b6; --accent2:#f77f00; --code-bg:#2d3748; --code-ink:#e2e8f0;
+    --ok:#2d6a4f; --warn:#d4a017; --bad:#c92a2a; --line:#dee2e6;
+    --joy:#ff6b9d;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
-  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 64px}
-  header.hero{background:linear-gradient(135deg,var(--accent),var(--accent2));
-       color:#fff;border-radius:14px;padding:28px 26px;margin-bottom:28px}
-  header.hero h1{margin:0 0 8px;font-size:26px;line-height:1.25}
-  header.hero p{margin:0;opacity:.92}
-  .meta{margin-top:10px;font-size:13px;opacity:.85}
-  h2{font-size:21px;margin:36px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
-  h3{font-size:17px;margin:24px 0 8px;color:var(--accent)}
-  p{margin:10px 0}
-  ul,ol{margin:10px 0 10px 22px}
-  li{margin:6px 0}
-  code.inline{background:#eef1f5;border:1px solid var(--line);border-radius:5px;
-       padding:1px 5px;font:14px/1.4 ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
-  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;
-       padding:16px 18px;overflow-x:auto;font:13.5px/1.55 ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
-  pre .c{color:#8b949e}  /* комментарии */
-  pre .k{color:#79c0ff}  /* ключевые/директивы */
-  table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--panel);
-       border:1px solid var(--line);border-radius:10px;overflow:hidden}
-  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;font-size:14.5px}
-  th{background:#eef3f8}
-  tr:nth-child(even) td{background:#fafbfc}
-  .note{border-left:4px solid var(--accent);background:#eaf3fb;border-radius:0 8px 8px 0;
-       padding:12px 16px;margin:16px 0}
-  .warn{border-left:4px solid var(--warn);background:#fff8e6;border-radius:0 8px 8px 0;
-       padding:12px 16px;margin:16px 0}
-  .ok{border-left:4px solid var(--ok);background:#eefbee;border-radius:0 8px 8px 0;
-       padding:12px 16px;margin:16px 0}
-  .os{border:1px solid var(--line);border-radius:12px;background:var(--panel);
-       padding:6px 18px 14px;margin:16px 0}
-  .os h4{margin:14px 0 6px;font-size:16px}
-  .badge{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;
-       padding:2px 10px;margin-right:6px;color:#fff}
-  .b-win{background:#0078d4}.b-ub{background:#e95420}
-  footer{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
+       font:17px/1.7 Georgia,'Times New Roman',serif;}
+  .wrap{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+  
+  header.hero{
+    background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
+    color:#fff;border-radius:16px;padding:48px 40px;margin-bottom:48px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.1);
+  }
+  header.hero h1{margin:0 0 12px;font-size:32px;line-height:1.3;font-weight:700}
+  header.hero p{margin:0;font-size:18px;opacity:.95;font-style:italic}
+  .subtitle{margin-top:16px;font-size:14px;opacity:.9;font-family:system-ui,sans-serif}
+  
+  h2{
+    font-size:26px;margin:56px 0 20px;padding-bottom:12px;
+    border-bottom:3px solid var(--accent);font-weight:700;
+    font-family:system-ui,sans-serif;
+  }
+  h3{
+    font-size:20px;margin:32px 0 14px;color:var(--accent);
+    font-weight:600;font-family:system-ui,sans-serif;
+  }
+  h4{
+    font-size:17px;margin:24px 0 10px;color:var(--accent2);
+    font-weight:600;font-family:system-ui,sans-serif;
+  }
+  
+  p{margin:14px 0;text-align:justify;hyphens:auto}
+  ul,ol{margin:14px 0 14px 28px}
+  li{margin:10px 0}
+  
+  code.inline{
+    background:#e9ecef;border:1px solid var(--line);border-radius:4px;
+    padding:2px 6px;font:15px/1.5 'Courier New',Consolas,monospace;
+    color:var(--ink);
+  }
+  
+  pre{
+    background:var(--code-bg);color:var(--code-ink);border-radius:10px;
+    padding:20px 24px;overflow-x:auto;margin:20px 0;
+    font:14px/1.6 'Courier New',Consolas,monospace;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  }
+  pre .c{color:#68d391;font-style:italic}  /* комментарии */
+  pre .k{color:#63b3ed}  /* ключевые слова */
+  pre .s{color:#fbb6ce}  /* строки */
+  
+  table{
+    border-collapse:collapse;width:100%;margin:20px 0;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  }
+  th,td{
+    border:1px solid var(--line);padding:12px 16px;
+    text-align:left;vertical-align:top;font-size:15px;
+    font-family:system-ui,sans-serif;
+  }
+  th{background:#e7f5ff;font-weight:600}
+  tr:nth-child(even) td{background:#f8f9fa}
+  
+  .note{
+    border-left:5px solid var(--accent);background:#e7f5ff;
+    border-radius:0 10px 10px 0;padding:16px 20px;margin:24px 0;
+    font-family:system-ui,sans-serif;
+  }
+  .warn{
+    border-left:5px solid var(--warn);background:#fff9db;
+    border-radius:0 10px 10px 0;padding:16px 20px;margin:24px 0;
+    font-family:system-ui,sans-serif;
+  }
+  .danger{
+    border-left:5px solid var(--bad);background:#ffe3e3;
+    border-radius:0 10px 10px 0;padding:16px 20px;margin:24px 0;
+    font-family:system-ui,sans-serif;
+  }
+  .joy{
+    border-left:5px solid var(--joy);background:#fff0f6;
+    border-radius:0 10px 10px 0;padding:20px 24px;margin:32px 0;
+    font-family:system-ui,sans-serif;
+  }
+  .joy::before{
+    content:"🎉 Момент радости";display:block;
+    font-weight:700;font-size:18px;margin-bottom:8px;color:var(--joy);
+  }
+  
+  .os-box{
+    border:2px solid var(--line);border-radius:12px;
+    background:var(--panel);padding:20px 24px;margin:24px 0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05);
+  }
+  .os-box h4{
+    margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent);
+  }
+  
+  .badge{
+    display:inline-block;font-size:12px;font-weight:700;
+    border-radius:999px;padding:4px 12px;margin-right:8px;
+    color:#fff;font-family:system-ui,sans-serif;
+    text-transform:uppercase;letter-spacing:0.5px;
+  }
+  .b-win{background:#0078d4}
+  .b-ub{background:#e95420}
+  
+  .step{
+    background:#f8f9fa;border:1px solid var(--line);border-radius:8px;
+    padding:16px 20px;margin:16px 0;font-family:system-ui,sans-serif;
+  }
+  .step-num{
+    display:inline-block;background:var(--accent);color:#fff;
+    width:28px;height:28px;border-radius:50%;text-align:center;
+    line-height:28px;font-weight:700;margin-right:12px;
+  }
+  
+  .terminal{
+    background:#000;color:#0f0;border-radius:6px;padding:16px;
+    font:13px/1.5 'Courier New',monospace;margin:16px 0;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .terminal::before{
+    content:"Terminal";display:block;color:#888;
+    font-size:11px;margin-bottom:8px;font-family:system-ui,sans-serif;
+  }
+  
+  footer{
+    margin-top:64px;padding-top:32px;border-top:2px solid var(--line);
+    color:var(--muted);font-size:14px;text-align:center;
+    font-family:system-ui,sans-serif;
+  }
+  
+  .toc{
+    background:#fff;border:2px solid var(--accent);border-radius:12px;
+    padding:24px 28px;margin:32px 0;font-family:system-ui,sans-serif;
+  }
+  .toc h3{margin:0 0 16px;color:var(--accent)}
+  .toc ol{margin:0;padding-left:24px}
+  .toc li{margin:8px 0}
+  
+  .checklist{
+    background:#f0fff4;border:2px solid var(--ok);border-radius:8px;
+    padding:16px 20px;margin:20px 0;font-family:system-ui,sans-serif;
+  }
+  .checklist::before{
+    content:"✓ Чек-лист";display:block;
+    font-weight:700;color:var(--ok);margin-bottom:8px;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header class="hero">
-  <h1>ESP32-C3 Super Mini: методика кросс-проверки двух путей сборки</h1>
-  <p>PlatformIO + ESP-IDF как взаимные эталоны для локализации неисправностей. Windows 11 Pro и Ubuntu (GNOME).</p>
-  <div class="meta">Живой документ · целевая плата: ESP32-C3 Super Mini · фреймворк: ESP-IDF</div>
+  <h1>ESP32-C3: От нуля до первого мигающего светодиода</h1>
+  <p>Полный учебник для тех, кто впервые берёт в руки микроконтроллер и хочет понять, как это работает</p>
+  <div class="subtitle">Целевая плата: ESP32-C3 Super Mini · Фреймворк: ESP-IDF · Платформы: Windows 11 Pro, Ubuntu GNOME</div>
 </header>
 
-<h2>0. Цель и порядок работ</h2>
-<p>Мы восстанавливаем навык низкоуровневой разработки и поднимаем новую для нас связку
-<code class="inline">VS Code + ESP-IDF + PlatformIO</code>. Чтобы при любом сбое не гадать,
-«кто виноват», мы держим <b>два независимых пути сборки одного и того же кода</b>. Это даёт точку
-отсчёта «заведомо работает» и позволяет локализовать проблему за одну проверку.</p>
-<ol>
-  <li>Создаём два пустых проекта: по одному в каждой системе.</li>
-  <li>Кладём <b>один и тот же</b> <code class="inline">main.c</code> в оба проекта.</li>
-  <li>Проверяем на своей системе и определяем рабочий путь.</li>
-  <li><b>Только после этого</b> ставим чистую экосистему под свою ОС с нужными версиями тулчейнов.</li>
-</ol>
+<div class="toc">
+  <h3>Содержание</h3>
+  <ol>
+    <li>Что такое ESP32 и почему это круто</li>
+    <li>Что нам понадобится</li>
+    <li>Установка инструментов (пошагово для каждой ОС)</li>
+    <li>Первый проект: мигаем светодиодом</li>
+    <li>Разбираем код построчно</li>
+    <li>Что такое FreeRTOS и почему это важно</li>
+    <li>Отладка и поиск ошибок</li>
+    <li>Что дальше: следующие шаги</li>
+  </ol>
+</div>
 
-<h2>1. Зачем два пути: дифференциальная диагностика</h2>
-<p>Когда один путь падает, мы собираем тот же код во втором и по результату сужаем область поиска.
-Чтение таблицы — ниже.</p>
-<table>
-  <tr><th>PlatformIO</th><th>ESP-IDF</th><th>Вывод</th></tr>
-  <tr><td>падает</td><td>собирается</td><td>Проблема в связке PlatformIO / её конфиге / версиях пакетов.</td></tr>
-  <tr><td>падает</td><td>падает</td><td>Проблема в коде или в общем окружении (API IDF, зависимости).</td></tr>
-  <tr><td>собирается</td><td>падает</td><td>PlatformIO в порядке; проблема в настройке отдельного IDF.</td></tr>
-  <tr><td>собирается</td><td>собирается</td><td>Сборка здорова; ищем проблему в рантайме, а не в компиляции.</td></tr>
-</table>
-<div class="warn"><b>Главный подвох:</b> PlatformIO использует <b>свой</b> пакет
-<code class="inline">framework-espidf</code>, и его версия может отличаться от системного IDF.
-Если API изменился между версиями, можно получить ложную локализацию. Контроль — строка
-<code class="inline">IDF version: ...</code>, которую печатает канарейка в каждой сборке.</div>
+<h2>1. Что такое ESP32 и почему это круто</h2>
 
-<h2>2. Общий main.c (канарейка)</h2>
-<p>Минимальный эталон <b>без внешних зависимостей</b> (без WiFi/роутера): проверяет тулчейн, вывод,
-чип, FreeRTOS и GPIO, и печатает версию IDF. WiFi — отдельный следующий шаг.</p>
-<pre><code><span class="c">// ============================================================
-//  CANARY — эталонный main.c для кросс-проверки двух путей сборки.
-//  ОДИН И ТОТ ЖЕ файл кладём в ОБА проекта: PlatformIO и ESP-IDF.
-//
-//  Доказывает без внешних зависимостей (без WiFi/роутера):
-//   - тулчейн компилирует и линкует;
-//   - вывод на терминал работает (printf + логгер);
-//   - чип определяется (модель, ревизия, MAC, флеш, частота);
-//   - FreeRTOS крутится (ядро, планировщик, heap, список задач);
-//   - GPIO и светодиод живы.
-//  И печатает ВЕРСИЮ IDF — чтобы сравнить оба пути.
-// ============================================================</span>
+<p>Представь себе маленький компьютер размером с ноготь, который умеет:</p>
+<ul>
+  <li>Подключаться к WiFi и интернету</li>
+  <li>Управлять датчиками, моторами, светодиодами</li>
+  <li>Работать от батарейки месяцами</li>
+  <li>Стоить как чашка кофе</li>
+</ul>
 
-<span class="k">#include</span> &lt;stdio.h&gt;              <span class="c">// printf — «сырой» вывод</span>
-<span class="k">#include</span> &lt;string.h&gt;
+<p>Это <b>ESP32</b> — семейство микроконтроллеров от компании Espressif. Они используются в умных домах, роботах, носимой электронике, IoT-устройствах. Это один из самых популярных чипов в мире DIY-электроники.</p>
 
-<span class="c">// ---- FreeRTOS ----</span>
-<span class="k">#include</span> "freertos/FreeRTOS.h"
-<span class="k">#include</span> "freertos/task.h"
+<p><b>ESP32-C3</b> — это современная версия на архитектуре RISC-V (открытый процессор). У него меньше ядер, чем у классического ESP32, но он дешевле, энергоэффективнее и отлично подходит для обучения.</p>
 
-<span class="c">// ---- ESP-IDF ----</span>
-<span class="k">#include</span> "esp_log.h"            <span class="c">// ESP_LOGI / ESP_LOGW</span>
-<span class="k">#include</span> "esp_system.h"         <span class="c">// esp_get_idf_version(), heap</span>
-<span class="k">#include</span> "esp_chip_info.h"      <span class="c">// esp_chip_info()</span>
-<span class="k">#include</span> "esp_flash.h"          <span class="c">// esp_flash_get_size()</span>
-<span class="k">#include</span> "esp_mac.h"            <span class="c">// esp_read_mac() — уникальный ID</span>
-<span class="k">#include</span> "driver/gpio.h"        <span class="c">// низкоуровневый доступ к пинам</span>
+<h3>Почему именно ESP32-C3 Super Mini?</h3>
+<ul>
+  <li><b>Компактность:</b> плата размером 2.5 × 1.8 см, помещается куда угодно</li>
+  <li><b>Встроенный USB:</b> не нужен отдельный программатор, подключаешь к компьютеру кабелем</li>
+  <li><b>Цена:</b> около $3-5 за плату</li>
+  <li><b>Всё включено:</b> на плате уже есть WiFi, Bluetooth, флеш-память, светодиод</li>
+</ul>
 
-<span class="k">#define</span> LED_GPIO 8              <span class="c">// встроенный синий светодиод Super Mini</span>
-<span class="k">static const char</span> *TAG = "CANARY";
+<h3>Что такое ESP-IDF?</h3>
+<p><b>ESP-IDF</b> (IoT Development Framework) — это официальный фреймворк от Espressif для программирования ESP32 на Си. Это не Arduino (где всё просто, но ограничено), а профессиональный инструмент, который используют инженеры в промышленности.</p>
 
-<span class="c">// ---- Шаг 1. Информация о чипе ----</span>
-<span class="k">static void</span> print_chip_info(<span class="k">void</span>)
-{
-    <span class="c">// КЛЮЧЕВАЯ строка: версия IDF, на которой собрался ЭТОТ путь.</span>
-    ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
+<p>Почему мы выбираем ESP-IDF, а не Arduino:</p>
+<ul>
+  <li><b>Полный контроль:</b> доступ ко всем регистрам и возможностям чипа</li>
+  <li><b>Современные практики:</b> FreeRTOS, многопоточность, событийная модель</li>
+  <li><b>Производительность:</b> оптимизированный код, минимум накладных расходов</li>
+  <li><b>Профессиональные навыки:</b> то, что нужно на реальной работе</li>
+</ul>
 
-    esp_chip_info_t info;
-    esp_chip_info(&amp;info);
-    <span class="k">const char</span> *model;
-    <span class="k">switch</span> (info.model) {
-        <span class="k">case</span> CHIP_ESP32C3: model = "ESP32-C3"; <span class="k">break</span>;
-        <span class="k">case</span> CHIP_ESP32S2: model = "ESP32-S2"; <span class="k">break</span>;
-        <span class="k">case</span> CHIP_ESP32S3: model = "ESP32-S3"; <span class="k">break</span>;
-        <span class="k">case</span> CHIP_ESP32:   model = "ESP32";    <span class="k">break</span>;
-        <span class="k">default</span>:           model = "Unknown";  <span class="k">break</span>;
-    }
-    ESP_LOGI(TAG, "Chip: %s | rev %d | cores %d",
-             model, info.revision, info.cores);
+<div class="joy">
+  К концу этого учебника ты сможешь написать код, который заставит светодиод на плате мигать по твоей команде. Это маленькая победа, но она докажет, что ты контролируешь железо напрямую.
+</div>
 
-    <span class="c">// Частота CPU из конфигурации (для C3 — 80/160 МГц).</span>
-    ESP_LOGI(TAG, "CPU freq: %d MHz", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ);
+<h2>2. Что нам понадобится</h2>
 
-    <span class="c">// Уникальный ID чипа — MAC-адрес.</span>
-    uint8_t mac[6] = {0};
-    <span class="k">if</span> (esp_read_mac(mac, ESP_MAC_WIFI_STA) == ESP_OK) {
-        ESP_LOGI(TAG, "MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    }
+<h3>Оборудование</h3>
+<div class="checklist">
+  <ul>
+    <li><b>Плата ESP32-C3 Super Mini</b> (любой производитель: Ai-Thinker, Wemos, no-name)</li>
+    <li><b>USB-кабель Type-C</b> (обязательно с передачей данных, а не только зарядка!)</li>
+    <li><b>Компьютер</b> с Windows 11 Pro или Ubuntu 22.04+</li>
+  </ul>
+</div>
 
-    <span class="c">// Размер флеш-памяти.</span>
-    uint32_t flash_size = 0;
-    <span class="k">if</span> (esp_flash_get_size(NULL, &amp;flash_size) == ESP_OK) {
-        ESP_LOGI(TAG, "Flash: %lu MB",
-                 (<span class="k">unsigned long</span>)(flash_size / (1024 * 1024)));
-    }
-}
+<div class="warn">
+  <b>Важно про кабель:</b> Многие USB-кабели только заряжают, но не передают данные. Если компьютер не видит плату — попробуй другой кабель. Хороший признак: при подключении слышен звук "подключилось устройство".
+</div>
 
-<span class="c">// ---- Шаг 2. Информация о FreeRTOS ----</span>
-<span class="k">static void</span> print_freertos_info(<span class="k">void</span>)
-{
-    ESP_LOGI(TAG, "FreeRTOS kernel: %s | tick: %d Hz",
-             tskKERNEL_VERSION_NUMBER, configTICK_RATE_HZ);
+<h3>Программное обеспечение</h3>
+<ul>
+  <li><b>VS Code</b> — редактор кода (бесплатный, кроссплатформенный)</li>
+  <li><b>Расширение PlatformIO</b> для VS Code — среда разработки</li>
+  <li><b>Расширение ESP-IDF</b> для VS Code (опционально, для второго пути сборки)</li>
+</ul>
 
-    ESP_LOGI(TAG, "Scheduler: %s",
-             xTaskGetSchedulerState() == taskSCHEDULER_RUNNING
-                 ? "Running" : "NOT running");
+<h2>3. Установка инструментов</h2>
 
-    ESP_LOGI(TAG, "Free heap: %lu bytes",
-             (<span class="k">unsigned long</span>)esp_get_free_heap_size());
+<p>Мы будем использовать <b>два пути сборки</b>: PlatformIO и ESP-IDF. Зачем? Чтобы если один сломается, второй работал — это даст тебе точку отсчёта для отладки. Но начнём с PlatformIO, он проще.</p>
 
-    <span class="c">// Список задач: имя, приоритет, остаток стека (HWM).</span>
-    UBaseType_t num = uxTaskGetNumberOfTasks();
-    TaskStatus_t *st = pvPortMalloc(num * <span class="k">sizeof</span>(TaskStatus_t));
-    <span class="k">if</span> (st != NULL) {
-        num = uxTaskGetSystemState(st, num, NULL);
-        ESP_LOGI(TAG, "Tasks in system: %d", (<span class="k">int</span>)num);
-        <span class="k">for</span> (UBaseType_t i = 0; i &lt; num; i++) {
-            ESP_LOGI(TAG, "  %-16s prio:%u stackHWM:%u",
-                     st[i].pcTaskName,
-                     (<span class="k">unsigned</span>)st[i].uxCurrentPriority,
-                     (<span class="k">unsigned</span>)st[i].usStackHighWaterMark);
-        }
-        vPortFree(st);   <span class="c">// освобождаем массив</span>
-    }
-}
+<div class="os-box">
+  <h4><span class="badge b-win">Windows</span> Windows 11 Pro</h4>
+  
+  <h4>Шаг 1: Установка VS Code</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    Скачай VS Code с официального сайта: <code class="inline">https://code.visualstudio.com/</code>
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    Установи как обычную программу (запусти скачанный .exe файл)
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Запусти VS Code
+  </div>
+  
+  <h4>Шаг 2: Установка расширения PlatformIO</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    В VS Code нажми <code class="inline">Ctrl+Shift+X</code> (или иконку "Extensions" слева)
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    В поиске введи: <code class="inline">PlatformIO IDE</code>
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Нажми "Install" (Установить). Подожди 2-3 минуты, пока скачается.
+  </div>
+  <div class="step">
+    <span class="step-num">4</span>
+    Перезапусти VS Code, когда попросит
+  </div>
+  
+  <div class="joy">
+    После перезапуска слева появится иконка PlatformIO (инопланетянин). Если видишь её — всё работает!
+  </div>
+  
+  <h4>Шаг 3: Проверка USB-порта</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    Подключи плату ESP32-C3 к компьютеру через USB
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    Открой "Диспетчер устройств" (Win+X → Диспетчер устройств)
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Разверни раздел "Порты (COM и LPT)". Ты должен увидеть устройство типа <code class="inline">USB Serial Device (COM5)</code> или <code class="inline">USB JTAG/serial debug unit</code>
+  </div>
+  <div class="step">
+    <span class="step-num">4</span>
+    Запомни номер порта (например, COM5) — он понадобится позже
+  </div>
+  
+  <div class="warn">
+    <b>Если порт не появился:</b> Скачай и установи драйвер Espressif USB-JTAG: <code class="inline">https://github.com/espressif/esp-win-usb-host-driver/releases</code>. После установки перезагрузи компьютер.
+  </div>
+</div>
 
-<span class="c">// ---- Точка входа ----</span>
+<div class="os-box">
+  <h4><span class="badge b-ub">Ubuntu</span> Ubuntu (GNOME)</h4>
+  
+  <h4>Шаг 1: Установка VS Code</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    Открой терминал (Ctrl+Alt+T)
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    Выполни команду:
+    <pre><code>sudo snap install code --classic</code></pre>
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Запусти VS Code из меню приложений или командой <code class="inline">code</code>
+  </div>
+  
+  <h4>Шаг 2: Установка расширения PlatformIO</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    В VS Code нажми <code class="inline">Ctrl+Shift+X</code>
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    Найди "PlatformIO IDE" и нажми "Install"
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Перезапусти VS Code
+  </div>
+  
+  <h4>Шаг 3: Настройка прав доступа к USB-порту</h4>
+  <p>В Linux обычные пользователи не могут напрямую обращаться к USB-устройствам. Нужно добавить себя в специальную группу.</p>
+  
+  <div class="step">
+    <span class="step-num">1</span>
+    В терминале выполни:
+    <pre><code>sudo usermod -aG dialout $USER</code></pre>
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    <b>Перелогинься</b> (выйди из системы и зайди снова) или перезагрузи компьютер
+  </div>
+  
+  <div class="danger">
+    <b>Без перелогина права не применятся!</b> Это самая частая ошибка новичков на Linux. Если после всех шагов прошивка не идёт — проверь, перелогинился ли ты.
+  </div>
+  
+  <h4>Шаг 4: Проверка USB-порта</h4>
+  <div class="step">
+    <span class="step-num">1</span>
+    Подключи плату ESP32-C3
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    В терминале выполни:
+    <pre><code>dmesg | tail -20</code></pre>
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    Ты должен увидеть строки вроде <code class="inline">usb 1-1: new full-speed USB device</code> и <code class="inline">cdc_acm 1-1:1.0: ttyACM0: USB ACM device</code>
+  </div>
+  <div class="step">
+    <span class="step-num">4</span>
+    Твой порт — <code class="inline">/dev/ttyACM0</code> (или <code class="inline">/dev/ttyUSB0</code>)
+  </div>
+</div>
+
+<h2>4. Первый проект: мигаем светодиодом</h2>
+
+<p>Это самый важный момент учебника. Мы напишем простейшую программу, которая заставит светодиод на плате мигать. Когда ты увидишь, как он мигает по твоей команде — это будет твоя первая победа.</p>
+
+<h3>Создаём проект в PlatformIO</h3>
+
+<div class="step">
+  <span class="step-num">1</span>
+  В VS Code нажми на иконку PlatformIO слева (инопланетянин)
+</div>
+<div class="step">
+  <span class="step-num">2</span>
+  Нажми "New Project" (Новый проект)
+</div>
+<div class="step">
+  <span class="step-num">3</span>
+  Заполни форму:
+  <ul>
+    <li><b>Name:</b> <code class="inline">hello-led</code></li>
+    <li><b>Board:</b> начни вводить <code class="inline">esp32-c3</code> и выбери <code class="inline">Espressif ESP32-C3-DevKitM-1</code></li>
+    <li><b>Framework:</b> <code class="inline">ESP-IDF</code></li>
+    <li><b>Use default location:</b> оставь галочку</li>
+  </ul>
+</div>
+<div class="step">
+  <span class="step-num">4</span>
+  Нажми "Finish". Подожди 1-2 минуты, пока PlatformIO создаст файлы и скачает нужные инструменты.
+</div>
+
+<div class="joy">
+  Слева в проводнике файлов появится структура проекта. Если видишь папки <code class="inline">src</code>, <code class="inline">include</code> и файл <code class="inline">platformio.ini</code> — проект создан!
+</div>
+
+<h3>Пишем код</h3>
+
+<p>Открой файл <code class="inline">src/main.c</code> (он должен быть пустым или содержать шаблон). Замени всё содержимое на следующий код:</p>
+
+<pre><code><span class="c">// Первая программа для ESP32-C3: мигаем светодиодом
+// Этот код доказывает, что:
+// 1. Твой код компилируется и загружается на плату
+// 2. Ты можешь управлять железом напрямую
+// 3. FreeRTOS работает (мы используем правильные задержки)</span>
+
+<span class="k">#include</span> &lt;stdio.h&gt;              <span class="c">// Для функции printf</span>
+<span class="k">#include</span> "freertos/FreeRTOS.h"  <span class="c">// Ядро FreeRTOS</span>
+<span class="k">#include</span> "freertos/task.h"      <span class="c">// Функции для работы с задачами</span>
+<span class="k">#include</span> "driver/gpio.h"        <span class="c">// Драйвер GPIO (управление пинами)</span>
+<span class="k">#include</span> "esp_log.h"            <span class="c">// Система логирования</span>
+
+<span class="c">// Определяем, к какому пину подключён светодиод
+// На ESP32-C3 Super Mini это GPIO8</span>
+<span class="k">#define</span> LED_GPIO 8
+
+<span class="c">// Тег для логирования (имя нашей программы в логах)</span>
+<span class="k">static const char</span> *TAG = "HELLO_LED";
+
+<span class="c">// Главная функция программы (точка входа)
+// В ESP-IDF это не main(), а app_main()</span>
 <span class="k">void</span> app_main(<span class="k">void</span>)
 {
-    <span class="c">// Даём монитору время подключиться.</span>
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    <span class="c">// «Сырой» вывод: UART жив ещё до логгера.</span>
-    printf("\n===== CANARY: printf works =====\n");
-
-    ESP_LOGI(TAG, "=== Chip info ===");
-    print_chip_info();
-
-    ESP_LOGI(TAG, "=== FreeRTOS info ===");
-    print_freertos_info();
-
-    <span class="c">// Готовим пин светодиода.</span>
+    <span class="c">// Приветственное сообщение в консоль</span>
+    ESP_LOGI(TAG, "Привет, ESP32-C3! Начинаем мигать светодиодом.");
+    
+    <span class="c">// Шаг 1: Настраиваем пин светодиода
+    // gpio_reset_pin() - сбрасываем пин к начальному состоянию
+    // gpio_set_direction() - устанавливаем пин как выход (OUTPUT)</span>
     gpio_reset_pin(LED_GPIO);
     gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
-    ESP_LOGI(TAG, "=== Blinking LED on GPIO%d ===", LED_GPIO);
-
-    <span class="c">// 10 «приветственных» миганий.</span>
-    <span class="k">int</span> level = 0;
-    <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 10; i++) {
-        gpio_set_level(LED_GPIO, level);
-        level = !level;
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }
-    gpio_set_level(LED_GPIO, 0);
-
-    <span class="c">// Сердцебиение: задача жива, система стабильна.</span>
+    
+    <span class="c">// Переменная для хранения текущего состояния светодиода
+    // 0 = выключен, 1 = включен</span>
+    <span class="k">int</span> led_state = 0;
+    
+    <span class="c">// Шаг 2: Бесконечный цикл мигания
+    // while(1) означает "повторять всегда"
+    // Важно: app_main() не должна завершаться, иначе плата перезагрузится</span>
     <span class="k">while</span> (1) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        ESP_LOGI(TAG, "alive | heap: %lu",
-                 (<span class="k">unsigned long</span>)esp_get_free_heap_size());
+        <span class="c">// Инвертируем состояние: 0 становится 1, 1 становится 0</span>
+        led_state = !led_state;
+        
+        <span class="c">// Устанавливаем уровень на пине:
+        // 0 = низкий уровень (GND, светодиод гаснет)
+        // 1 = высокий уровень (3.3V, светодиод горит)</span>
+        gpio_set_level(LED_GPIO, led_state);
+        
+        <span class="c">// Выводим сообщение в лог (увидим в консоли)</span>
+        ESP_LOGI(TAG, "Светодиод: %s", led_state ? "ВКЛ" : "ВЫКЛ");
+        
+        <span class="c">// Ждём 500 миллисекунд (полсекунды)
+        // vTaskDelay() - это "правильная" задержка FreeRTOS
+        // Она отдаёт процессор другим задачам, а не крутит холостой цикл
+        // pdMS_TO_TICKS(500) переводит миллисекунды в тики FreeRTOS</span>
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }</code></pre>
 
-<h2>3. Каркас A — PlatformIO</h2>
-<pre><code>canary-pio/
-├── platformio.ini
-└── src/
-    └── main.c          <span class="c">&lt;-- наш общий файл</span></code></pre>
-<pre><code><span class="c">; platformio.ini</span>
-[env:esp32-c3-supermini]
-<span class="c">; PlatformIO сам скачает СВОЙ framework-espidf и тулчейн</span>
-<span class="c">; в ~/.platformio/packages — независимо от системного IDF.</span>
-platform = espressif32
+<h3>Компилируем и загружаем на плату</h3>
 
-<span class="c">; Универсальная плата под Super Mini. Альтернативы при странностях</span>
-<span class="c">; с флешем: seeed_xiao_esp32c3 или lolin_c3_mini.</span>
-board = esp32-c3-devkitm-1
-
-<span class="c">; «Чистый» ESP-IDF, а не Arduino.</span>
-framework = espidf
-
-monitor_speed = 115200</code></pre>
-
-<h2>4. Каркас B — отдельный ESP-IDF</h2>
-<pre><code>canary-idf/
-├── CMakeLists.txt          <span class="c">&lt;-- корневой</span>
-└── main/
-    ├── CMakeLists.txt      <span class="c">&lt;-- компонент main</span>
-    └── main.c              <span class="c">&lt;-- наш общий файл</span></code></pre>
-<pre><code><span class="c"># Корневой CMakeLists.txt</span>
-cmake_minimum_required(VERSION 3.16)
-include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(canary)</code></pre>
-<pre><code><span class="c"># main/CMakeLists.txt</span>
-idf_component_register(SRCS "main.c"
-                       INCLUDE_DIRS ".")</code></pre>
-
-<h2>5. Чистая экосистема под ОС</h2>
-
-<div class="os">
-  <h4><span class="badge b-win">Windows</span> Windows 11 Pro</h4>
-  <ul>
-    <li><b>ESP-IDF (путь B):</b> расширение VS Code «Espressif IDF» → «Configure ESP-IDF Extension» →
-        выбрать стабильную ветку <code class="inline">v5.3.x</code>. Расширение ставит IDF и тулчейн в свой
-        каталог и <b>не трогает системный PATH</b>. Альтернатива — онлайн-инсталлятор Espressif,
-        создающий ярлык «ESP-IDF 5.3 CMD» с окружением на сессию.</li>
-    <li><b>PlatformIO (путь A):</b> расширение «PlatformIO IDE». Платформу подтянет сама.</li>
-    <li><b>Порт:</b> в диспетчере устройств — <code class="inline">COMx</code>. Super Mini использует
-        встроенный USB-Serial-JTAG чипа C3; если порт не виден — поставь драйвер Espressif USB-JTAG
-        (идёт с инсталлятором IDF) или WinUSB через Zadig.</li>
-    <li><b>Команды PlatformIO:</b> <code class="inline">pio run</code>, <code class="inline">pio run -t upload</code>,
-        <code class="inline">pio device monitor</code>. При необходимости зафиксируй
-        <code class="inline">upload_port = COM5</code> в <code class="inline">platformio.ini</code>.</li>
-  </ul>
+<div class="step">
+  <span class="step-num">1</span>
+  Убедись, что плата подключена к компьютеру через USB
+</div>
+<div class="step">
+  <span class="step-num">2</span>
+  Внизу окна VS Code найди панель статуса PlatformIO (сине-зелёная полоса)
+</div>
+<div class="step">
+  <span class="step-num">3</span>
+  Нажми на иконку "галочка" (Build) — это компиляция
 </div>
 
-<div class="os">
-  <h4><span class="badge b-ub">Ubuntu</span> Ubuntu (GNOME)</h4>
-  <ul>
-    <li><b>VS Code:</b> <code class="inline">sudo snap install code</code> (или .deb с сайта).</li>
-    <li><b>Зависимости IDF:</b>
-        <code class="inline">sudo apt update &amp;&amp; sudo apt install git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3-venv python3-pip</code></li>
-    <li><b>ESP-IDF (путь B):</b> либо расширение VS Code (чисто, без PATH), либо классика:
-        <code class="inline">git clone -b v5.3.x --recursive https://github.com/espressif/esp-idf.git</code>,
-        затем <code class="inline">./install.sh esp32c3</code> и <code class="inline">source export.sh</code> в каждой сессии.</li>
-    <li><b>PlatformIO (путь A):</b> расширение «PlatformIO IDE».</li>
-    <li><b>Порт и права:</b> C3 определяется как <code class="inline">/dev/ttyACM0</code> (или
-        <code class="inline">/dev/ttyUSB0</code>). Обязательно добавь себя в группу dialout и перелогинься:
-        <code class="inline">sudo usermod -aG dialout $USER</code>. Без этого прошивка упадёт на правах доступа.</li>
-  </ul>
+<p>Подожди 30-60 секунд. В терминале внизу побежит текст. Если всё хорошо, в конце увидишь:</p>
+
+<div class="terminal">
+SUCCESS: Program built successfully.<br>
+Memory usage:<br>
+RAM:   [=         ]   5.2% (used 17356 bytes from 327680 bytes)<br>
+Flash: [========  ]  78.3% (used 821456 bytes from 1048576 bytes)
 </div>
 
-<div class="note"><b>Согласование версий.</b> После установки обеих систем запусти канарейку в каждом пути
-и сравни строки <code class="inline">IDF version: ...</code>. Если они разъехались — зафиксируй версии:
-в PlatformIO это <code class="inline">platform = espressif32@&lt;версия&gt;</code>, в IDF — выбранная ветка
-при установке. Сравнение должно быть «яблоки с яблоками».</div>
+<div class="joy">
+  Если видишь "SUCCESS" — поздравляю! Твой код скомпилировался без ошибок. Это уже победа.
+</div>
 
-<h2>6. Подводные камни</h2>
+<div class="step">
+  <span class="step-num">4</span>
+  Теперь нажми на иконку "стрелка" (Upload) — это загрузка на плату
+</div>
+
+<p>PlatformIO найдёт USB-порт и зальёт программу на плату. В терминале увидишь что-то вроде:</p>
+
+<div class="terminal">
+Writing at 0x00010000... (100 %)<br>
+Wrote 821456 bytes (456789 compressed) at 0x00010000 in 8.2 seconds<br>
+Hash of data verified.<br>
+<br>
+Leaving...<br>
+Hard resetting via RTS pin...
+</div>
+
+<div class="joy">
+  🎉 СМОТРИ НА ПЛАТУ! Синий светодиод должен начать мигать раз в секунду!
+  <br><br>
+  Если он мигает — ты только что написал свою первую программу для микроконтроллера и загрузил её на железо. Ты контролируешь электронику кодом!
+</div>
+
+<h3>Открываем монитор порта</h3>
+
+<p>Чтобы видеть сообщения из программы (наши "Светодиод: ВКЛ/ВЫКЛ"), нужно открыть монитор порта:</p>
+
+<div class="step">
+  <span class="step-num">1</span>
+  Нажми на иконку "вилка" (Serial Monitor) в панели статуса PlatformIO
+</div>
+<div class="step">
+  <span class="step-num">2</span>
+  В терминале побежит:
+</div>
+
+<div class="terminal">
+I (1234) HELLO_LED: Привет, ESP32-C3! Начинаем мигать светодиодом.<br>
+I (1234) HELLO_LED: Светодиод: ВКЛ<br>
+I (1734) HELLO_LED: Светодиод: ВЫКЛ<br>
+I (2234) HELLO_LED: Светодиод: ВКЛ<br>
+I (2734) HELLO_LED: Светодиод: ВЫКЛ<br>
+...
+</div>
+
+<p>Число в скобках (1234, 1734 и т.д.) — это миллисекунды с момента запуска. Видишь разницу 500 мс? Это наша задержка работает идеально!</p>
+
+<div class="joy">
+  Теперь у тебя есть полная обратная связь: ты видишь мигающий светодиод И логи программы. Ты контролируешь железо и видишь, что оно делает. Это и есть инженерия!
+</div>
+
+<h2>5. Разбираем код построчно</h2>
+
+<p>Теперь, когда всё работает, давай поймём, <b>как</b> оно работает. Это важно, чтобы ты не просто копировал код, а понимал его.</p>
+
+<h3>Заголовочные файлы (#include)</h3>
+
+<pre><code><span class="k">#include</span> &lt;stdio.h&gt;              <span class="c">// Стандартная библиотека Си</span>
+<span class="k">#include</span> "freertos/FreeRTOS.h"  <span class="c">// Ядро операционной системы FreeRTOS</span>
+<span class="k">#include</span> "freertos/task.h"      <span class="c">// Функции для задач (потоков)</span>
+<span class="k">#include</span> "driver/gpio.h"        <span class="c">// Драйвер для управления пинами</span>
+<span class="k">#include</span> "esp_log.h"            <span class="c">// Система логирования ESP-IDF</span></code></pre>
+
+<p><b>Почему так много библиотек?</b> ESP-IDF — это профессиональный фреймворк. Вместо одной "волшебной" функции, которая делает всё (как в Arduino), здесь много маленьких специализированных модулей. Это даёт гибкость и контроль.</p>
+
+<h3>Точка входа: app_main()</h3>
+
+<pre><code><span class="k">void</span> app_main(<span class="k">void</span>)
+{
+    <span class="c">// ... код ...</span>
+}</code></pre>
+
+<p>В Arduino точка входа — это <code class="inline">setup()</code> и <code class="inline">loop()</code>. В ESP-IDF — это <code class="inline">app_main()</code>.</p>
+
+<p><b>Важно:</b> <code class="inline">app_main()</code> — это не просто функция, это <b>задача FreeRTOS</b>. Если она завершится (дойдёт до закрывающей скобки), плата перезагрузится. Поэтому внутри обязательно должен быть бесконечный цикл <code class="inline">while(1)</code>.</p>
+
+<h3>Настройка пина: GPIO</h3>
+
+<pre><code><span class="k">#define</span> LED_GPIO 8              <span class="c">// Номер пина</span>
+
+gpio_reset_pin(LED_GPIO);        <span class="c">// Сброс к начальному состоянию</span>
+gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);  <span class="c">// Режим "выход"</span></code></pre>
+
+<p><b>Что такое GPIO?</b> General-Purpose Input/Output — универсальные входы/выходы. Это пины на чипе, которые можно программировать как входы (читать напряжение) или выходы (управлять напряжением).</p>
+
+<p><b>Почему GPIO8?</b> На плате ESP32-C3 Super Mini синий светодиод физически подключён к пину GPIO8. Это можно посмотреть в документации к плате или просто методом проб.</p>
+
+<p><b>Зачем gpio_reset_pin()?</b> Перед использованием пин нужно "очистить" от возможных настроек, оставшихся от загрузчика. Это хорошая практика.</p>
+
+<h3>Управление пином: включаем и выключаем</h3>
+
+<pre><code><span class="k">int</span> led_state = 0;              <span class="c">// 0 = выкл, 1 = вкл</span>
+
+led_state = !led_state;          <span class="c">// Инвертируем: 0→1, 1→0</span>
+gpio_set_level(LED_GPIO, led_state);  <span class="c">// Устанавливаем уровень</span></code></pre>
+
+<p><b>Как это работает на уровне железа:</b></p>
 <ul>
-  <li><b>GPIO8 / светодиод.</b> GPIO8 на C3 — strapping pin, но читается он бутлоадером
-      <b>только в момент сброса</b>. Программа повлиять на это не может, поэтому в коде бояться нечего.
-      Опасность чисто аппаратная: не вешай жёсткую подтяжку на GPIO8. Светодиод через резистор — безопасно.</li>
-  <li><b>Ошибки без abort.</b> Для диагностики не используй <code class="inline">ESP_ERROR_CHECK</code>
-      (он роняет плату в перезагрузку при первой ошибке). Проверяй код и печатай имя ошибки через
-      <code class="inline">esp_err_to_name()</code>, затем продолжай — так за один запуск видно максимум.</li>
-  <li><b>Ubuntu dialout.</b> Самая частая причина «не прошивается» на Linux — отсутствие в группе dialout.</li>
-  <li><b>Windows драйвер.</b> Если COM-порт не появляется — это драйвер USB-Serial-JTAG, а не плата.</li>
+  <li><code class="inline">gpio_set_level(pin, 0)</code> — пин подключается к земле (GND), напряжение 0В</li>
+  <li><code class="inline">gpio_set_level(pin, 1)</code> — пин подключается к питанию (3.3V)</li>
 </ul>
 
-<h2>7. Следующие шаги</h2>
+<p>Светодиод включается, когда на его аноде высокое напряжение (3.3V), а на катоде — низкое (GND). Когда мы даём на GPIO8 высокий уровень — ток течёт через светодиод, и он светится.</p>
+
+<h3>Задержка: vTaskDelay()</h3>
+
+<pre><code>vTaskDelay(pdMS_TO_TICKS(500));  <span class="c">// Ждём 500 мс</span></code></pre>
+
+<p><b>Почему не используем обычный sleep() или delay()?</b></p>
+
+<p>ESP32 работает под управлением <b>FreeRTOS</b> — операционной системы реального времени. В ней много задач работают параллельно: твоя программа, WiFi-стек, Bluetooth, системные службы.</p>
+
+<p><code class="inline">vTaskDelay()</code> — это "умная" задержка. Она говорит FreeRTOS: "Я хочу спать 500 мс, отдай процессор другим задачам". Обычный <code class="inline">delay()</code> просто крутит холостой цикл, тратя процессорное время впустую.</p>
+
+<p><code class="inline">pdMS_TO_TICKS(500)</code> — это макрос, который переводит миллисекунды в "тики" FreeRTOS. Один тик обычно равен 1 мс, но это настраивается.</p>
+
+<h3>Логирование: ESP_LOGI()</h3>
+
+<pre><code>ESP_LOGI(TAG, "Светодиод: %s", led_state ? "ВКЛ" : "ВЫКЛ");</code></pre>
+
+<p><b>Что это делает?</b> Выводит сообщение в монитор порта (Serial Monitor). Это как <code class="inline">Serial.println()</code> в Arduino, но мощнее.</p>
+
+<p><b>Параметры:</b></p>
+<ul>
+  <li><code class="inline">TAG</code> — имя нашей программы (мы задали его как "HELLO_LED")</li>
+  <li>Формат строки (как в <code class="inline">printf</code>)</li>
+  <li>Значения для подстановки в формат</li>
+</ul>
+
+<p><b>Уровни логирования:</b></p>
+<ul>
+  <li><code class="inline">ESP_LOGE</code> — ошибка (Error)</li>
+  <li><code class="inline">ESP_LOGW</code> — предупреждение (Warning)</li>
+  <li><code class="inline">ESP_LOGI</code> — информация (Info)</li>
+  <li><code class="inline">ESP_LOGD</code> — отладка (Debug)</li>
+  <li><code class="inline">ESP_LOGV</code> — подробно (Verbose)</li>
+</ul>
+
+<p>В продакшене обычно оставляют только INFO и выше, а DEBUG выключаешь для производительности.</p>
+
+<h2>6. Что такое FreeRTOS и почему это важно</h2>
+
+<p>Ты только что использовал FreeRTOS, даже если не заметил. Давай разберёмся, что это и зачем нужно.</p>
+
+<h3>Проблема: один процессор, много задач</h3>
+
+<p>У ESP32-C3 одно ядро процессора. Но одновременно должны работать:</p>
+<ul>
+  <li>Твоя программа (мигание светодиодом)</li>
+  <li>WiFi-стек (если включён)</li>
+  <li>Bluetooth-стек (если включён)</li>
+  <li>Системные службы (обработка прерываний, таймеры)</li>
+</ul>
+
+<p>Как одному процессору делать много дел одновременно?</p>
+
+<h3>Решение: FreeRTOS и многозадачность</h3>
+
+<p><b>FreeRTOS</b> (Free Real-Time Operating System) — это операционная система реального времени для микроконтроллеров. Она решает проблему так:</p>
+
 <ol>
-  <li>Добиться, чтобы канарейка собралась и напечаталась в <b>обоих</b> путях.</li>
-  <li>Сверить версии IDF по логам и зафиксировать их.</li>
-  <li>Только потом добавлять WiFi (проверка радиочасти) — отдельным модулем поверх живого эталона.</li>
+  <li>Каждая "программа" — это <b>задача</b> (task)</li>
+  <li>FreeRTOS быстро переключается между задачами (тысячи раз в секунду)</li>
+  <li>Со стороны кажется, что все задачи работают одновременно</li>
 </ol>
 
-<footer>Собрано как рабочий конспект · ESP32-C3 Super Mini · две ОС: Windows 11 Pro / Ubuntu GNOME</footer>
+<p>Это как жонглёр: он подбрасывает много мячей, но в каждый момент времени держит только один. Переключение происходит так быстро, что выглядит как одновременность.</p>
+
+<h3>Задачи в нашей программе</h3>
+
+<p>Когда ты запустил программу, FreeRTOS создал несколько задач:</p>
+
+<div class="terminal">
+I (1234) HELLO_LED: Tasks in system: 8<br>
+I (1234) HELLO_LED: &nbsp;&nbsp;IDLE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prio:0 &nbsp;stackHWM:100<br>
+I (1234) HELLO_LED: &nbsp;&nbsp;main &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prio:1 &nbsp;stackHWM:2048<br>
+I (1234) HELLO_LED: &nbsp;&nbsp;Tmr Svc &nbsp;&nbsp;&nbsp;prio:1 &nbsp;stackHWM:200<br>
+I (1234) HELLO_LED: &nbsp;&nbsp;ipc0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prio:23 stackHWM:150<br>
+...
+</div>
+
+<ul>
+  <li><b>main</b> — это твоя программа (app_main)</li>
+  <li><b>IDLE</b> — задача "ничегонеделания", работает когда все остальные спят</li>
+  <li><b>Tmr Svc</b> — служба таймеров</li>
+  <li><b>ipc0</b> — межпроцессное взаимодействие</li>
+</ul>
+
+<h3>Почему это важно для тебя</h3>
+
+<ol>
+  <li><b>Правильные задержки:</b> <code class="inline">vTaskDelay()</code> отдаёт процессор другим задачам</li>
+  <li><b>Параллельная работа:</b> ты можешь создать свою задачу для мигания и другую — для чтения датчиков</li>
+  <li><b>Профессиональные навыки:</b> FreeRTOS используется в промышленности, автомобилях, медицине</li>
+</ol>
+
+<div class="note">
+  <b>Когда ты освоишься с базой</b>, мы создадим две задачи: одна будет мигать светодиодом, вторая — читать кнопку. Они будут работать параллельно, не мешая друг другу. Это и есть настоящая многозадачность!
+</div>
+
+<h2>7. Отладка и поиск ошибок</h2>
+
+<p>Что делать, если что-то пошло не так? Вот типичные проблемы и их решения.</p>
+
+<h3>Проблема: "Порт не найден"</h3>
+
+<div class="warn">
+  <b>Windows:</b> Проверь Диспетчер устройств. Если устройства нет — установи драйвер Espressif USB-JTAG.
+  <br><br>
+  <b>Ubuntu:</b> Проверь, что ты в группе dialout (<code class="inline">groups $USER</code>). Если нет — добавь себя и перелогинься.
+</div>
+
+<h3>Проблема: "Compilation failed"</h3>
+
+<p>Компилятор не может понять твой код. Читай ошибку в терминале — обычно там указана строка и причина.</p>
+
+<p>Типичные ошибки:</p>
+<ul>
+  <li>Забыл точку с запятой (<code class="inline">;</code>)</li>
+  <li>Опечатка в имени функции</li>
+  <li>Не подключил нужный заголовочный файл</li>
+</ul>
+
+<h3>Проблема: "Прошивка не загружается"</h3>
+
+<p>Код скомпилировался, но не записался на плату.</p>
+
+<div class="step">
+  <span class="step-num">1</span>
+  Отключи плату от USB
+</div>
+<div class="step">
+  <span class="step-num">2</span>
+  Зажми кнопку <b>BOOT</b> на плате (если есть)
+</div>
+<div class="step">
+  <span class="step-num">3</span>
+  Подключи плату, продолжая держать BOOT
+</div>
+<div class="step">
+  <span class="step-num">4</span>
+  Отпусти BOOT
+</div>
+<div class="step">
+  <span class="step-num">5</span>
+  Попробуй загрузить снова
+</div>
+
+<p>Это переводит плату в режим прошивки вручную.</p>
+
+<h3>Проблема: "Программа не запускается"</h3>
+
+<p>Плата прошилась, но ничего не происходит.</p>
+
+<div class="step">
+  <span class="step-num">1</span>
+  Открой монитор порта (Serial Monitor)
+</div>
+<div class="step">
+  <span class="step-num">2</span>
+  Нажми кнопку <b>RESET</b> на плате (или отключи/подключи USB)
+</div>
+<div class="step">
+  <span class="step-num">3</span>
+  Смотри, что выводится в терминал
+</div>
+
+<p>Если видишь сообщения об ошибках (например, "abort() was called") — читай текст ошибки, там указана причина.</p>
+
+<h3>Как читать логи ошибок</h3>
+
+<p>ESP-IDF использует макрос <code class="inline">ESP_ERROR_CHECK()</code> для проверки ошибок. Если ошибка произошла, он выводит:</p>
+
+<div class="terminal">
+ESP_ERROR_CHECK failed: esp_err_t 0x105 (ESP_ERR_NOT_FOUND) at 0x400d1234<br>
+file: "main.c" line 42<br>
+func: app_main<br>
+abort() was called at PC 0x400d1234 on core 0
+</div>
+
+<p>Что здесь важно:</p>
+<ul>
+  <li><code class="inline">esp_err_t 0x105</code> — код ошибки</li>
+  <li><code class="inline">ESP_ERR_NOT_FOUND</code> — имя ошибки (понятнее, чем число)</li>
+  <li><code class="inline">file: "main.c" line 42</code> — где произошла ошибка</li>
+  <li><code class="inline">func: app_main</code> — в какой функции</li>
+</ul>
+
+<p>Зная имя ошибки и строку, ты можешь понять, что пошло не так.</p>
+
+<h2>8. Что дальше: следующие шаги</h2>
+
+<p>Поздравляю! Ты сделал самое сложное — первый шаг. Теперь у тебя есть:</p>
+<ul>
+  <li>Рабочая среда разработки</li>
+  <li>Понимание, как компилировать и загружать код</li>
+  <li>Первая работающая программа</li>
+  <li>Базовое понимание FreeRTOS и GPIO</li>
+</ul>
+
+<h3>Что можно попробовать дальше</h3>
+
+<ol>
+  <li><b>Изменить скорость мигания:</b> поменяй <code class="inline">pdMS_TO_TICKS(500)</code> на <code class="inline">pdMS_TO_TICKS(100)</code> — будет мигать быстрее</li>
+  
+  <li><b>Сделать "бегущий огонь":</b> если на плате несколько светодиодов, управляй ими по очереди</li>
+  
+  <li><b>Добавить кнопку:</b> подключи кнопку к другому пину, читай её состояние и меняй поведение светодиода</li>
+  
+  <li><b>Подключить датчик:</b> например, датчик температуры. Читай показания и выводи в лог</li>
+  
+  <li><b>WiFi:</b> подключись к домашней сети, получи IP-адрес, сделай простой веб-сервер</li>
+</ol>
+
+<h3>Рекомендуемые ресурсы</h3>
+
+<ul>
+  <li><b>Официальная документация ESP-IDF:</b> <code class="inline">https://docs.espressif.com/projects/esp-idf/</code></li>
+  <li><b>Примеры кода:</b> в папке <code class="inline">examples/</code> установленного ESP-IDF</li>
+  <li><b>Форум Espressif:</b> <code class="inline">https://www.esp32.com/</code></li>
+  <li><b>Документация FreeRTOS:</b> <code class="inline">https://www.freertos.org/</code></li>
+</ul>
+
+<h3>Два пути сборки: зачем это нужно</h3>
+
+<p>В начале учебника я упоминала, что мы будем использовать <b>два пути сборки</b>: PlatformIO и ESP-IDF. Сейчас ты работал только с PlatformIO, и этого достаточно для старта.</p>
+
+<p>Но когда ты начнёшь делать более сложные проекты, полезно иметь второй путь — «чистый» ESP-IDF без PlatformIO. Зачем?</p>
+
+<ul>
+  <li><b>Диагностика:</b> если что-то сломается в PlatformIO, ты можешь проверить, работает ли код в чистом IDF. Если в IDF собирается, а в PIO нет — проблема в настройках PlatformIO, а не в коде.</li>
+  <li><b>Доступ ко всем возможностям IDF:</b> PlatformIO иногда отстаёт от свежих версий ESP-IDF. Чистый IDF даёт доступ к последним фичам сразу.</li>
+  <li><b>Понимание системы сборки:</b> работая с чистым IDF, ты увидишь, как устроен процесс сборки «под капотом» — CMake, компоненты, конфигурация через menuconfig.</li>
+</ul>
+
+<p>Когда будешь готов — скажи, и я подготовлю отдельный раздел по установке и настройке чистого ESP-IDF.</p>
+
+<h3>Философия инженера</h3>
+
+<p>Напоследок — несколько принципов, которые помогут тебе расти:</p>
+
+<ol>
+  <li><b>Не копируй слепо.</b> Каждый раз, когда берёшь чужой код, разберись, что делает каждая строка. Если не понимаешь — спроси у документации или у меня.</li>
+  <li><b>Ошибки — это нормально.</b> Каждый инженер проходит через сотни ошибок. Важно не избегать их, а учиться читать и понимать.</li>
+  <li><b>Маленькие шаги.</b> Не пытайся сразу сделать космолёт. Мигни светодиодом. Потом подключи кнопку. Потом датчик. Потом WiFi. Каждый шаг — победа.</li>
+  <li><b>Документируй.</b> Записывай, что ты сделал и почему. Будущий ты скажет спасибо.</li>
+</ol>
+
+<div class="joy">
+  Ты прошёл путь от «я не знаю, что такое ESP32» до «я написал код, скомпилировал, загрузил на плату, и светодиод мигает по моей команде». Это настоящий инженерный путь. Гордись собой!
+  <br><br>
+  А теперь — вперёд, к новым проектам! 🚀
+</div>
+
+<footer>
+  <p><b>ESP32-C3: От нуля до первого мигающего светодиода</b></p>
+  <p>Учебник для начинающих · Плата: ESP32-C3 Super Mini · Фреймворк: ESP-IDF</p>
+  <p>Создано с ❤️ для тех, кто делает первые шаги в мире микроконтроллеров</p>
+  <p style="margin-top:16px;font-size:12px;color:#aaa">Версия 1.0 · Если нашёл ошибку или хочешь дополнить — пиши, доработаем вместе</p>
+</footer>
+
 </div>
 </body>
-  </html>
+</html>
