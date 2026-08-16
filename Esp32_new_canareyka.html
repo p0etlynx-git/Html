@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32-C3 Super Mini: методика кросс-проверки двух путей сборки</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1c2430; --muted:#5b6675;
+    --accent:#0e6ba8; --accent2:#8a2be2; --code-bg:#1e2430; --code-ink:#e6edf3;
+    --ok:#1a7f37; --warn:#9a6700; --bad:#cf222e; --line:#dfe4ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 64px}
+  header.hero{background:linear-gradient(135deg,var(--accent),var(--accent2));
+       color:#fff;border-radius:14px;padding:28px 26px;margin-bottom:28px}
+  header.hero h1{margin:0 0 8px;font-size:26px;line-height:1.25}
+  header.hero p{margin:0;opacity:.92}
+  .meta{margin-top:10px;font-size:13px;opacity:.85}
+  h2{font-size:21px;margin:36px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+  h3{font-size:17px;margin:24px 0 8px;color:var(--accent)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:6px 0}
+  code.inline{background:#eef1f5;border:1px solid var(--line);border-radius:5px;
+       padding:1px 5px;font:14px/1.4 ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;
+       padding:16px 18px;overflow-x:auto;font:13.5px/1.55 ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
+  pre .c{color:#8b949e}  /* комментарии */
+  pre .k{color:#79c0ff}  /* ключевые/директивы */
+  table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--panel);
+       border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;font-size:14.5px}
+  th{background:#eef3f8}
+  tr:nth-child(even) td{background:#fafbfc}
+  .note{border-left:4px solid var(--accent);background:#eaf3fb;border-radius:0 8px 8px 0;
+       padding:12px 16px;margin:16px 0}
+  .warn{border-left:4px solid var(--warn);background:#fff8e6;border-radius:0 8px 8px 0;
+       padding:12px 16px;margin:16px 0}
+  .ok{border-left:4px solid var(--ok);background:#eefbee;border-radius:0 8px 8px 0;
+       padding:12px 16px;margin:16px 0}
+  .os{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+       padding:6px 18px 14px;margin:16px 0}
+  .os h4{margin:14px 0 6px;font-size:16px}
+  .badge{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;
+       padding:2px 10px;margin-right:6px;color:#fff}
+  .b-win{background:#0078d4}.b-ub{background:#e95420}
+  footer{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>ESP32-C3 Super Mini: методика кросс-проверки двух путей сборки</h1>
+  <p>PlatformIO + ESP-IDF как взаимные эталоны для локализации неисправностей. Windows 11 Pro и Ubuntu (GNOME).</p>
+  <div class="meta">Живой документ · целевая плата: ESP32-C3 Super Mini · фреймворк: ESP-IDF</div>
+</header>
+
+<h2>0. Цель и порядок работ</h2>
+<p>Мы восстанавливаем навык низкоуровневой разработки и поднимаем новую для нас связку
+<code class="inline">VS Code + ESP-IDF + PlatformIO</code>. Чтобы при любом сбое не гадать,
+«кто виноват», мы держим <b>два независимых пути сборки одного и того же кода</b>. Это даёт точку
+отсчёта «заведомо работает» и позволяет локализовать проблему за одну проверку.</p>
+<ol>
+  <li>Создаём два пустых проекта: по одному в каждой системе.</li>
+  <li>Кладём <b>один и тот же</b> <code class="inline">main.c</code> в оба проекта.</li>
+  <li>Проверяем на своей системе и определяем рабочий путь.</li>
+  <li><b>Только после этого</b> ставим чистую экосистему под свою ОС с нужными версиями тулчейнов.</li>
+</ol>
+
+<h2>1. Зачем два пути: дифференциальная диагностика</h2>
+<p>Когда один путь падает, мы собираем тот же код во втором и по результату сужаем область поиска.
+Чтение таблицы — ниже.</p>
+<table>
+  <tr><th>PlatformIO</th><th>ESP-IDF</th><th>Вывод</th></tr>
+  <tr><td>падает</td><td>собирается</td><td>Проблема в связке PlatformIO / её конфиге / версиях пакетов.</td></tr>
+  <tr><td>падает</td><td>падает</td><td>Проблема в коде или в общем окружении (API IDF, зависимости).</td></tr>
+  <tr><td>собирается</td><td>падает</td><td>PlatformIO в порядке; проблема в настройке отдельного IDF.</td></tr>
+  <tr><td>собирается</td><td>собирается</td><td>Сборка здорова; ищем проблему в рантайме, а не в компиляции.</td></tr>
+</table>
+<div class="warn"><b>Главный подвох:</b> PlatformIO использует <b>свой</b> пакет
+<code class="inline">framework-espidf</code>, и его версия может отличаться от системного IDF.
+Если API изменился между версиями, можно получить ложную локализацию. Контроль — строка
+<code class="inline">IDF version: ...</code>, которую печатает канарейка в каждой сборке.</div>
+
+<h2>2. Общий main.c (канарейка)</h2>
+<p>Минимальный эталон <b>без внешних зависимостей</b> (без WiFi/роутера): проверяет тулчейн, вывод,
+чип, FreeRTOS и GPIO, и печатает версию IDF. WiFi — отдельный следующий шаг.</p>
+<pre><code><span class="c">// ============================================================
+//  CANARY — эталонный main.c для кросс-проверки двух путей сборки.
+//  ОДИН И ТОТ ЖЕ файл кладём в ОБА проекта: PlatformIO и ESP-IDF.
+//
+//  Доказывает без внешних зависимостей (без WiFi/роутера):
+//   - тулчейн компилирует и линкует;
+//   - вывод на терминал работает (printf + логгер);
+//   - чип определяется (модель, ревизия, MAC, флеш, частота);
+//   - FreeRTOS крутится (ядро, планировщик, heap, список задач);
+//   - GPIO и светодиод живы.
+//  И печатает ВЕРСИЮ IDF — чтобы сравнить оба пути.
+// ============================================================</span>
+
+<span class="k">#include</span> &lt;stdio.h&gt;              <span class="c">// printf — «сырой» вывод</span>
+<span class="k">#include</span> &lt;string.h&gt;
+
+<span class="c">// ---- FreeRTOS ----</span>
+<span class="k">#include</span> "freertos/FreeRTOS.h"
+<span class="k">#include</span> "freertos/task.h"
+
+<span class="c">// ---- ESP-IDF ----</span>
+<span class="k">#include</span> "esp_log.h"            <span class="c">// ESP_LOGI / ESP_LOGW</span>
+<span class="k">#include</span> "esp_system.h"         <span class="c">// esp_get_idf_version(), heap</span>
+<span class="k">#include</span> "esp_chip_info.h"      <span class="c">// esp_chip_info()</span>
+<span class="k">#include</span> "esp_flash.h"          <span class="c">// esp_flash_get_size()</span>
+<span class="k">#include</span> "esp_mac.h"            <span class="c">// esp_read_mac() — уникальный ID</span>
+<span class="k">#include</span> "driver/gpio.h"        <span class="c">// низкоуровневый доступ к пинам</span>
+
+<span class="k">#define</span> LED_GPIO 8              <span class="c">// встроенный синий светодиод Super Mini</span>
+<span class="k">static const char</span> *TAG = "CANARY";
+
+<span class="c">// ---- Шаг 1. Информация о чипе ----</span>
+<span class="k">static void</span> print_chip_info(<span class="k">void</span>)
+{
+    <span class="c">// КЛЮЧЕВАЯ строка: версия IDF, на которой собрался ЭТОТ путь.</span>
+    ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
+
+    esp_chip_info_t info;
+    esp_chip_info(&amp;info);
+    <span class="k">const char</span> *model;
+    <span class="k">switch</span> (info.model) {
+        <span class="k">case</span> CHIP_ESP32C3: model = "ESP32-C3"; <span class="k">break</span>;
+        <span class="k">case</span> CHIP_ESP32S2: model = "ESP32-S2"; <span class="k">break</span>;
+        <span class="k">case</span> CHIP_ESP32S3: model = "ESP32-S3"; <span class="k">break</span>;
+        <span class="k">case</span> CHIP_ESP32:   model = "ESP32";    <span class="k">break</span>;
+        <span class="k">default</span>:           model = "Unknown";  <span class="k">break</span>;
+    }
+    ESP_LOGI(TAG, "Chip: %s | rev %d | cores %d",
+             model, info.revision, info.cores);
+
+    <span class="c">// Частота CPU из конфигурации (для C3 — 80/160 МГц).</span>
+    ESP_LOGI(TAG, "CPU freq: %d MHz", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ);
+
+    <span class="c">// Уникальный ID чипа — MAC-адрес.</span>
+    uint8_t mac[6] = {0};
+    <span class="k">if</span> (esp_read_mac(mac, ESP_MAC_WIFI_STA) == ESP_OK) {
+        ESP_LOGI(TAG, "MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    }
+
+    <span class="c">// Размер флеш-памяти.</span>
+    uint32_t flash_size = 0;
+    <span class="k">if</span> (esp_flash_get_size(NULL, &amp;flash_size) == ESP_OK) {
+        ESP_LOGI(TAG, "Flash: %lu MB",
+                 (<span class="k">unsigned long</span>)(flash_size / (1024 * 1024)));
+    }
+}
+
+<span class="c">// ---- Шаг 2. Информация о FreeRTOS ----</span>
+<span class="k">static void</span> print_freertos_info(<span class="k">void</span>)
+{
+    ESP_LOGI(TAG, "FreeRTOS kernel: %s | tick: %d Hz",
+             tskKERNEL_VERSION_NUMBER, configTICK_RATE_HZ);
+
+    ESP_LOGI(TAG, "Scheduler: %s",
+             xTaskGetSchedulerState() == taskSCHEDULER_RUNNING
+                 ? "Running" : "NOT running");
+
+    ESP_LOGI(TAG, "Free heap: %lu bytes",
+             (<span class="k">unsigned long</span>)esp_get_free_heap_size());
+
+    <span class="c">// Список задач: имя, приоритет, остаток стека (HWM).</span>
+    UBaseType_t num = uxTaskGetNumberOfTasks();
+    TaskStatus_t *st = pvPortMalloc(num * <span class="k">sizeof</span>(TaskStatus_t));
+    <span class="k">if</span> (st != NULL) {
+        num = uxTaskGetSystemState(st, num, NULL);
+        ESP_LOGI(TAG, "Tasks in system: %d", (<span class="k">int</span>)num);
+        <span class="k">for</span> (UBaseType_t i = 0; i &lt; num; i++) {
+            ESP_LOGI(TAG, "  %-16s prio:%u stackHWM:%u",
+                     st[i].pcTaskName,
+                     (<span class="k">unsigned</span>)st[i].uxCurrentPriority,
+                     (<span class="k">unsigned</span>)st[i].usStackHighWaterMark);
+        }
+        vPortFree(st);   <span class="c">// освобождаем массив</span>
+    }
+}
+
+<span class="c">// ---- Точка входа ----</span>
+<span class="k">void</span> app_main(<span class="k">void</span>)
+{
+    <span class="c">// Даём монитору время подключиться.</span>
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    <span class="c">// «Сырой» вывод: UART жив ещё до логгера.</span>
+    printf("\n===== CANARY: printf works =====\n");
+
+    ESP_LOGI(TAG, "=== Chip info ===");
+    print_chip_info();
+
+    ESP_LOGI(TAG, "=== FreeRTOS info ===");
+    print_freertos_info();
+
+    <span class="c">// Готовим пин светодиода.</span>
+    gpio_reset_pin(LED_GPIO);
+    gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+    ESP_LOGI(TAG, "=== Blinking LED on GPIO%d ===", LED_GPIO);
+
+    <span class="c">// 10 «приветственных» миганий.</span>
+    <span class="k">int</span> level = 0;
+    <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 10; i++) {
+        gpio_set_level(LED_GPIO, level);
+        level = !level;
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+    gpio_set_level(LED_GPIO, 0);
+
+    <span class="c">// Сердцебиение: задача жива, система стабильна.</span>
+    <span class="k">while</span> (1) {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        ESP_LOGI(TAG, "alive | heap: %lu",
+                 (<span class="k">unsigned long</span>)esp_get_free_heap_size());
+    }
+}</code></pre>
+
+<h2>3. Каркас A — PlatformIO</h2>
+<pre><code>canary-pio/
+├── platformio.ini
+└── src/
+    └── main.c          <span class="c">&lt;-- наш общий файл</span></code></pre>
+<pre><code><span class="c">; platformio.ini</span>
+[env:esp32-c3-supermini]
+<span class="c">; PlatformIO сам скачает СВОЙ framework-espidf и тулчейн</span>
+<span class="c">; в ~/.platformio/packages — независимо от системного IDF.</span>
+platform = espressif32
+
+<span class="c">; Универсальная плата под Super Mini. Альтернативы при странностях</span>
+<span class="c">; с флешем: seeed_xiao_esp32c3 или lolin_c3_mini.</span>
+board = esp32-c3-devkitm-1
+
+<span class="c">; «Чистый» ESP-IDF, а не Arduino.</span>
+framework = espidf
+
+monitor_speed = 115200</code></pre>
+
+<h2>4. Каркас B — отдельный ESP-IDF</h2>
+<pre><code>canary-idf/
+├── CMakeLists.txt          <span class="c">&lt;-- корневой</span>
+└── main/
+    ├── CMakeLists.txt      <span class="c">&lt;-- компонент main</span>
+    └── main.c              <span class="c">&lt;-- наш общий файл</span></code></pre>
+<pre><code><span class="c"># Корневой CMakeLists.txt</span>
+cmake_minimum_required(VERSION 3.16)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(canary)</code></pre>
+<pre><code><span class="c"># main/CMakeLists.txt</span>
+idf_component_register(SRCS "main.c"
+                       INCLUDE_DIRS ".")</code></pre>
+
+<h2>5. Чистая экосистема под ОС</h2>
+
+<div class="os">
+  <h4><span class="badge b-win">Windows</span> Windows 11 Pro</h4>
+  <ul>
+    <li><b>ESP-IDF (путь B):</b> расширение VS Code «Espressif IDF» → «Configure ESP-IDF Extension» →
+        выбрать стабильную ветку <code class="inline">v5.3.x</code>. Расширение ставит IDF и тулчейн в свой
+        каталог и <b>не трогает системный PATH</b>. Альтернатива — онлайн-инсталлятор Espressif,
+        создающий ярлык «ESP-IDF 5.3 CMD» с окружением на сессию.</li>
+    <li><b>PlatformIO (путь A):</b> расширение «PlatformIO IDE». Платформу подтянет сама.</li>
+    <li><b>Порт:</b> в диспетчере устройств — <code class="inline">COMx</code>. Super Mini использует
+        встроенный USB-Serial-JTAG чипа C3; если порт не виден — поставь драйвер Espressif USB-JTAG
+        (идёт с инсталлятором IDF) или WinUSB через Zadig.</li>
+    <li><b>Команды PlatformIO:</b> <code class="inline">pio run</code>, <code class="inline">pio run -t upload</code>,
+        <code class="inline">pio device monitor</code>. При необходимости зафиксируй
+        <code class="inline">upload_port = COM5</code> в <code class="inline">platformio.ini</code>.</li>
+  </ul>
+</div>
+
+<div class="os">
+  <h4><span class="badge b-ub">Ubuntu</span> Ubuntu (GNOME)</h4>
+  <ul>
+    <li><b>VS Code:</b> <code class="inline">sudo snap install code</code> (или .deb с сайта).</li>
+    <li><b>Зависимости IDF:</b>
+        <code class="inline">sudo apt update &amp;&amp; sudo apt install git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3-venv python3-pip</code></li>
+    <li><b>ESP-IDF (путь B):</b> либо расширение VS Code (чисто, без PATH), либо классика:
+        <code class="inline">git clone -b v5.3.x --recursive https://github.com/espressif/esp-idf.git</code>,
+        затем <code class="inline">./install.sh esp32c3</code> и <code class="inline">source export.sh</code> в каждой сессии.</li>
+    <li><b>PlatformIO (путь A):</b> расширение «PlatformIO IDE».</li>
+    <li><b>Порт и права:</b> C3 определяется как <code class="inline">/dev/ttyACM0</code> (или
+        <code class="inline">/dev/ttyUSB0</code>). Обязательно добавь себя в группу dialout и перелогинься:
+        <code class="inline">sudo usermod -aG dialout $USER</code>. Без этого прошивка упадёт на правах доступа.</li>
+  </ul>
+</div>
+
+<div class="note"><b>Согласование версий.</b> После установки обеих систем запусти канарейку в каждом пути
+и сравни строки <code class="inline">IDF version: ...</code>. Если они разъехались — зафиксируй версии:
+в PlatformIO это <code class="inline">platform = espressif32@&lt;версия&gt;</code>, в IDF — выбранная ветка
+при установке. Сравнение должно быть «яблоки с яблоками».</div>
+
+<h2>6. Подводные камни</h2>
+<ul>
+  <li><b>GPIO8 / светодиод.</b> GPIO8 на C3 — strapping pin, но читается он бутлоадером
+      <b>только в момент сброса</b>. Программа повлиять на это не может, поэтому в коде бояться нечего.
+      Опасность чисто аппаратная: не вешай жёсткую подтяжку на GPIO8. Светодиод через резистор — безопасно.</li>
+  <li><b>Ошибки без abort.</b> Для диагностики не используй <code class="inline">ESP_ERROR_CHECK</code>
+      (он роняет плату в перезагрузку при первой ошибке). Проверяй код и печатай имя ошибки через
+      <code class="inline">esp_err_to_name()</code>, затем продолжай — так за один запуск видно максимум.</li>
+  <li><b>Ubuntu dialout.</b> Самая частая причина «не прошивается» на Linux — отсутствие в группе dialout.</li>
+  <li><b>Windows драйвер.</b> Если COM-порт не появляется — это драйвер USB-Serial-JTAG, а не плата.</li>
+</ul>
+
+<h2>7. Следующие шаги</h2>
+<ol>
+  <li>Добиться, чтобы канарейка собралась и напечаталась в <b>обоих</b> путях.</li>
+  <li>Сверить версии IDF по логам и зафиксировать их.</li>
+  <li>Только потом добавлять WiFi (проверка радиочасти) — отдельным модулем поверх живого эталона.</li>
+</ol>
+
+<footer>Собрано как рабочий конспект · ESP32-C3 Super Mini · две ОС: Windows 11 Pro / Ubuntu GNOME</footer>
+</div>
+</body>
+  </html>
